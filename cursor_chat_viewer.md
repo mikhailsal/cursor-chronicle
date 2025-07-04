@@ -1,201 +1,201 @@
 # Cursor Chat Viewer
 
-Python скрипт для извлечения и отображения диалогов из базы данных Cursor IDE с поддержкой инструментов и прикрепленных файлов.
+Python script for extracting and displaying dialogs from Cursor IDE database with support for tools and attached files.
 
-## Описание
+## Description
 
-Этот скрипт позволяет просматривать полную историю чатов с ИИ из Cursor IDE, включая:
-- 💬 Сообщения пользователя и ответы ИИ
-- 🛠️ Вызовы инструментов (tool calls)
-- ⚡ Выполнение терминальных команд
-- ✏️ Редактирование файлов
-- 🔍 Поиск по кодовой базе
-- 🌐 Веб-поиск и другие MCP инструменты
-- 📎 **НОВОЕ**: Прикрепленные файлы и контекст
+This script allows viewing complete AI chat history from Cursor IDE, including:
+- 💬 User messages and AI responses
+- 🛠️ Tool calls
+- ⚡ Terminal command execution
+- ✏️ File editing
+- 🔍 Codebase search
+- 🌐 Web search and other MCP tools
+- 📎 **NEW**: Attached files and context
 
-Скрипт извлекает данные из SQLite баз данных, где Cursor хранит всю историю диалогов и выполнения инструментов.
+The script extracts data from SQLite databases where Cursor stores all dialog history and tool execution.
 
-## Возможности
+## Features
 
-- 📋 Просмотр списка всех проектов с диалогами
-- 💬 Просмотр списка диалогов для конкретного проекта  
-- 🔍 Поиск и отображение конкретного диалога
-- 🕒 По умолчанию показывает самый свежий диалог из самого свежего проекта
-- 🎯 Поддержка частичного поиска по названиям проектов и диалогов
-- 🛠️ **НОВОЕ**: Отображение вызовов инструментов с параметрами и результатами
-- ⚡ **НОВОЕ**: Показ выполненных терминальных команд с выводом
-- ✏️ **НОВОЕ**: Информация о редактировании файлов с diff'ами
-- 📎 **НОВОЕ**: Отображение прикрепленных файлов с контекстом
+- 📋 View list of all projects with dialogs
+- 💬 View dialog list for specific project
+- 🔍 Search and display specific dialog
+- 🕒 Shows most recent dialog from most recent project by default
+- 🎯 Supports partial search by project and dialog names
+- 🛠️ **NEW**: Display tool calls with parameters and results
+- ⚡ **NEW**: Show executed terminal commands with output
+- ✏️ **NEW**: File editing information with diffs
+- 📎 **NEW**: Display attached files with context
 
-## Использование
+## Usage
 
-### Показать самый свежий диалог (по умолчанию)
+### Show most recent dialog (default)
 ```bash
 python3 cursor_chat_viewer.py
 ```
 
-### Показать список всех проектов
+### Show list of all projects
 ```bash
 python3 cursor_chat_viewer.py --list-projects
 ```
 
-### Показать диалоги конкретного проекта
+### Show dialogs for specific project
 ```bash
 python3 cursor_chat_viewer.py --list-dialogs ai-chatting
 ```
 
-### Показать конкретный диалог
+### Show specific dialog
 ```bash
-python3 cursor_chat_viewer.py --project ai-chatting --dialog "база данных"
+python3 cursor_chat_viewer.py --project ai-chatting --dialog "database"
 ```
 
-### Показать диалог из конкретного проекта (самый свежий)
+### Show dialog from specific project (most recent)
 ```bash
 python3 cursor_chat_viewer.py --project tts-python-ai
 ```
 
-## Параметры
+## Parameters
 
-- `--project`, `-p` - Название проекта (поддерживает частичное совпадение)
-- `--dialog`, `-d` - Название диалога (поддерживает частичное совпадение)  
-- `--list-projects` - Показать список всех проектов
-- `--list-dialogs PROJECT` - Показать список диалогов для указанного проекта
+- `--project`, `-p` - Project name (supports partial matching)
+- `--dialog`, `-d` - Dialog name (supports partial matching)
+- `--list-projects` - Show list of all projects
+- `--list-dialogs PROJECT` - Show dialog list for specified project
 
-## Формат вывода
+## Output Format
 
-Диалоги отображаются в читаемом формате с инструментами и прикрепленными файлами:
+Dialogs are displayed in readable format with tools and attached files:
 
 ```
 ============================================================
-ПРОЕКТ: ai-chatting
-ДИАЛОГ: Где хранится база данных Cursor IDE
+PROJECT: ai-chatting
+DIALOG: Where is Cursor IDE database stored
 ============================================================
 
-👤 ПОЛЬЗОВАТЕЛЬ:
-Тебе нужно выяснить, где Cursor IDE хранит базу данных...
+👤 USER:
+You need to find out where Cursor IDE stores the database...
 
-📎 ПРИКРЕПЛЕННЫЕ ФАЙЛЫ:
-   📍 Активный файл: anime/Kill la Kill 01-04 summary.txt
-      Строка: 5
-      Превью: Третья серия показывает саму Сацуки в новом свете...
-   🔗 Релевантный файл: cursor_chat_viewer.py
-   🔗 Релевантный файл: README.md
-   📁 Файлы проекта (9 файлов):
+📎 ATTACHED FILES:
+   📍 Active file: anime/Kill la Kill 01-04 summary.txt
+      Line: 5
+      Preview: The third episode shows Satsuki herself in a new light...
+   🔗 Relevant file: cursor_chat_viewer.py
+   🔗 Relevant file: README.md
+   📁 Project files (9 files):
       - anime/[HorribleSubs] Kill la Kill - 01 [720p].ass
       - anime/[HorribleSubs] Kill la Kill - 01 [720p].txt
       - anime/[HorribleSubs] Kill la Kill - 02 [720p].ass
-      - backup/весь софт без годов.txt
-      - backup/весь софт.txt
-      ... и еще 4 файлов
+      - backup/all software without years.txt
+      - backup/all software.txt
+      ... and 4 more files
 ----------------------------------------
 
-🛠️ ИНСТРУМЕНТ: ⚡ Terminal Command
-   Название: run_terminal_cmd
-   Статус: completed
-   Решение: ✅ accepted
-   Параметры:
+🛠️ TOOL: ⚡ Terminal Command
+   Name: run_terminal_cmd
+   Status: completed
+   Decision: ✅ accepted
+   Parameters:
      command: find ~/.config/Cursor -name "*.db" -o -name "*.sqlite"
      explanation: Searching for database files in Cursor config directory
-   Результат:
-     Код выхода: 0
-     Вывод: /home/user/.config/Cursor/User/globalStorage/state.vscdb...
+   Result:
+     Exit code: 0
+     Output: /home/user/.config/Cursor/User/globalStorage/state.vscdb...
 ----------------------------------------
 
-🤖 ИИ:
+🤖 AI:
 Hello! I'm Claude Sonnet 4. I found the Cursor database location...
 ----------------------------------------
 ```
 
-## Поддерживаемые инструменты
+## Supported Tools
 
-Скрипт распознает и красиво отображает следующие типы инструментов:
+The script recognizes and beautifully displays the following tool types:
 
-- 🔍 **Codebase Search** - поиск по кодовой базе
-- 🔎 **Grep Search** - поиск по регулярным выражениям
-- 📖 **Read File** - чтение файлов
-- 📁 **List Directory** - просмотр содержимого папок
-- ✏️ **Edit File** - редактирование файлов (с показом diff'ов)
-- 🔍 **File Search** - поиск файлов
-- 🗑️ **Delete File** - удаление файлов
-- 🔄 **Reapply** - повторное применение изменений
-- ⚡ **Terminal Command** - выполнение команд в терминале
-- 📋 **Fetch Rules** - получение правил
-- 🌐 **Web Search** - веб-поиск
-- 🔧 **MCP Tool** - различные MCP инструменты (браузер, puppeteer и др.)
+- 🔍 **Codebase Search** - codebase search
+- 🔎 **Grep Search** - regex search
+- 📖 **Read File** - file reading
+- 📁 **List Directory** - directory listing
+- ✏️ **Edit File** - file editing (with diff display)
+- 🔍 **File Search** - file search
+- 🗑️ **Delete File** - file deletion
+- 🔄 **Reapply** - reapplying changes
+- ⚡ **Terminal Command** - terminal command execution
+- 📋 **Fetch Rules** - rules fetching
+- 🌐 **Web Search** - web search
+- 🔧 **MCP Tool** - various MCP tools (browser, puppeteer, etc.)
 
-## Типы прикрепленных файлов
+## Attached File Types
 
-Скрипт распознает и отображает следующие типы прикрепленных файлов:
+The script recognizes and displays the following attached file types:
 
-- 📍 **Активный файл** - файл, открытый в редакторе в момент создания сообщения
-  - Показывает путь к файлу, номер строки и превью текста
-- ✅ **Выбранные файлы** - файлы, явно прикрепленные пользователем к сообщению (символ @)
-  - Это основные прикрепленные файлы, которые видны в интерфейсе Cursor
-- 📎 **Контекстные файлы** - файлы из кодовой базы с фрагментами кода
-  - Показывает диапазон строк и превью содержимого
-- 🔗 **Релевантные файлы** - файлы, автоматически определенные как релевантные контексту
-- 📁 **Файлы проекта** - полная структура файлов проекта (ограничено первыми 10 для читаемости)
-- 🎯 **Выбранные в контексте** - файлы с конкретными выделениями или фрагментами
+- 📍 **Active file** - file open in editor when message was created
+  - Shows file path, line number, and text preview
+- ✅ **Selected files** - files explicitly attached by user to message (@ symbol)
+  - These are the main attached files visible in Cursor interface
+- 📎 **Context files** - files from codebase with code fragments
+  - Shows line ranges and content preview
+- 🔗 **Relevant files** - files automatically determined as relevant to context
+- 📁 **Project files** - complete project file structure (limited to first 10 for readability)
+- 🎯 **Selected in context** - files with specific selections or fragments
 
-## Как это работает
+## How It Works
 
-Скрипт читает данные из следующих мест:
+The script reads data from the following locations:
 
-1. **Метаданные проектов**: `~/.config/Cursor/User/workspaceStorage/*/workspace.json`
-2. **Информация о диалогах**: `~/.config/Cursor/User/workspaceStorage/*/state.vscdb` (таблица `ItemTable`, ключ `composer.composerData`)
-3. **Сообщения и инструменты**: `~/.config/Cursor/User/globalStorage/state.vscdb` (таблица `cursorDiskKV`, ключи `bubbleId:*`)
+1. **Project metadata**: `~/.config/Cursor/User/workspaceStorage/*/workspace.json`
+2. **Dialog information**: `~/.config/Cursor/User/workspaceStorage/*/state.vscdb` (table `ItemTable`, key `composer.composerData`)
+3. **Messages and tools**: `~/.config/Cursor/User/globalStorage/state.vscdb` (table `cursorDiskKV`, keys `bubbleId:*`)
 
-### Структура данных
+### Data Structure
 
-- `type: 1` - сообщение пользователя 👤
-- `type: 2` - ответ ИИ 🤖
-- `toolFormerData` - данные о вызове инструмента 🛠️
-  - `tool` - тип инструмента (числовой код)
-  - `name` - название инструмента
-  - `status` - статус выполнения
-  - `userDecision` - решение пользователя (accepted/rejected)
-  - `rawArgs` - параметры вызова
-  - `result` - результат выполнения
+- `type: 1` - user message 👤
+- `type: 2` - AI response 🤖
+- `toolFormerData` - tool call data 🛠️
+  - `tool` - tool type (numeric code)
+  - `name` - tool name
+  - `status` - execution status
+  - `userDecision` - user decision (accepted/rejected)
+  - `rawArgs` - call parameters
+  - `result` - execution result
 
-## Требования
+## Requirements
 
 - Python 3.6+
-- Установленный Cursor IDE с историей диалогов
-- Права на чтение файлов в `~/.config/Cursor/`
+- Installed Cursor IDE with dialog history
+- Read permissions for files in `~/.config/Cursor/`
 
-## Примеры использования
+## Usage Examples
 
 ```bash
-# Посмотреть все проекты
+# View all projects
 ./cursor_chat_viewer.py --list-projects
 
-# Найти проект с "python" в названии
+# Find project with "python" in name
 ./cursor_chat_viewer.py --project python
 
-# Найти диалог про тесты в проекте ai-chatting  
-./cursor_chat_viewer.py --project ai-chatting --dialog тест
+# Find dialog about tests in ai-chatting project
+./cursor_chat_viewer.py --project ai-chatting --dialog test
 
-# Показать все диалоги проекта
+# Show all dialogs for project
 ./cursor_chat_viewer.py --list-dialogs starcraft7x
 ```
 
-## Что нового в версии 2.0
+## What's New in Version 2.0
 
-- ✨ **Поддержка инструментов**: отображение всех вызовов инструментов с параметрами и результатами
-- 🎨 **Красивое форматирование**: иконки для разных типов инструментов
-- 📊 **Детальная информация**: показ кодов выхода команд, diff'ов файлов, статусов выполнения
-- 🔧 **MCP инструменты**: поддержка браузера, puppeteer и других MCP инструментов
-- 📈 **Расширенная диагностика**: больше информации о каждом действии в диалоге
+- ✨ **Tool support**: display of all tool calls with parameters and results
+- 🎨 **Beautiful formatting**: icons for different tool types
+- 📊 **Detailed information**: showing command exit codes, file diffs, execution statuses
+- 🔧 **MCP tools**: support for browser, puppeteer and other MCP tools
+- 📈 **Extended diagnostics**: more information about each action in dialog
 
-## Что нового в версии 3.0
+## What's New in Version 3.0
 
-- 📎 **Поддержка прикрепленных файлов**: отображение всех типов прикрепленных к диалогу файлов
-- 📍 **Активные файлы**: показ файла, открытого в редакторе с номером строки и превью
-- 🔗 **Релевантные файлы**: автоматически определенные Cursor файлы контекста  
-- 📁 **Структура проекта**: полная иерархия файлов проекта из метаданных
-- 🎨 **Улучшенное форматирование**: группировка файлов по типам с иконками
-- 🔧 **Расширенный парсинг**: анализ полей `currentFileLocationData`, `projectLayouts`, `context` и `relevantFiles`
+- 📎 **Attached files support**: display of all types of files attached to dialog
+- 📍 **Active files**: showing file open in editor with line number and preview
+- 🔗 **Relevant files**: automatically determined Cursor context files
+- 📁 **Project structure**: complete project file hierarchy from metadata
+- 🎨 **Improved formatting**: grouping files by types with icons
+- 🔧 **Extended parsing**: analysis of `currentFileLocationData`, `projectLayouts`, `context` and `relevantFiles` fields
 
-## Автор
+## Author
 
-Создано с помощью Claude Sonnet 4 в рамках исследования структуры данных Cursor IDE. 
+Created with Claude Sonnet 4 as part of research on Cursor IDE data structure. 

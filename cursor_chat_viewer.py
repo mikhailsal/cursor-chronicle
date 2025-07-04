@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Cursor Chat Viewer
-Извлекает и отображает диалоги из базы данных Cursor IDE с поддержкой 
-прикрепленных файлов.
+Extracts and displays dialogs from Cursor IDE database with support for 
+attached files.
 """
 
 import sqlite3
@@ -48,7 +48,7 @@ class CursorChatViewer:
         }
     
     def get_projects(self) -> List[Dict]:
-        """Получить список всех проектов с их метаданными"""
+        """Get list of all projects with their metadata"""
         projects = []
         
         for workspace_dir in self.workspace_storage_path.iterdir():
@@ -62,7 +62,7 @@ class CursorChatViewer:
                 continue
             
             try:
-                # Читаем информацию о проекте
+                # Read project information
                 with open(workspace_json, 'r') as f:
                     workspace_data = json.load(f)
                 
@@ -73,7 +73,7 @@ class CursorChatViewer:
                 else:
                     project_name = folder_uri
                 
-                # Читаем данные композеров из базы
+                # Read composer data from database
                 conn = sqlite3.connect(state_db)
                 cursor = conn.cursor()
                 
@@ -87,7 +87,7 @@ class CursorChatViewer:
                     composer_data = json.loads(result[0])
                     composers = composer_data.get('allComposers', [])
                     
-                    # Находим самый свежий диалог
+                    # Find the most recent dialog
                     latest_dialog = None
                     if composers:
                         latest_dialog = max(
@@ -109,10 +109,10 @@ class CursorChatViewer:
                 conn.close()
                 
             except Exception:
-                print(f"Ошибка при обработке проекта {workspace_dir.name}")
+                print(f"Error processing project {workspace_dir.name}")
                 continue
         
-        # Сортируем проекты по времени последнего диалога
+        # Sort projects by last dialog time
         projects.sort(
             key=lambda x: x['latest_dialog'].get('lastUpdatedAt', 0)
             if x['latest_dialog']
@@ -122,17 +122,17 @@ class CursorChatViewer:
         return projects
     
     def get_dialog_messages(self, composer_id: str) -> List[Dict]:
-        """Получить все сообщения диалога по ID композера"""
+        """Get all dialog messages by composer ID"""
         if not self.global_storage_path.exists():
             raise FileNotFoundError(
-                f"Глобальная база данных не найдена: "
+                f"Global database not found: "
                 f"{self.global_storage_path}"
             )
         
         conn = sqlite3.connect(self.global_storage_path)
         cursor = conn.cursor()
         
-        # Сначала получаем данные композера для правильного порядка
+        # First get composer data for correct order
         cursor.execute(
             """SELECT value FROM cursorDiskKV 
             WHERE key = ? AND LENGTH(value) > 100""",
@@ -145,7 +145,7 @@ class CursorChatViewer:
         if composer_result:
             try:
                 composer_data = json.loads(composer_result[0])
-                # Получаем правильный порядок из fullConversationHeadersOnly
+                # Get correct order from fullConversationHeadersOnly
                 if 'fullConversationHeadersOnly' in composer_data:
                     ordered_bubble_ids = [
                         bubble['bubbleId']
@@ -155,7 +155,7 @@ class CursorChatViewer:
             except json.JSONDecodeError:
                 pass
         
-        # Если нет fullConversationHeadersOnly, используем старый метод
+        # If no fullConversationHeadersOnly, use old method
         if not ordered_bubble_ids:
             cursor.execute(
                 """SELECT rowid, key, value FROM cursorDiskKV 
@@ -165,7 +165,7 @@ class CursorChatViewer:
             )
             results = cursor.fetchall()
         else:
-            # Получаем пузырьки в правильном порядке
+            # Get bubbles in correct order
             results = []
             for bubble_id in ordered_bubble_ids:
                 cursor.execute(
@@ -247,199 +247,147 @@ class CursorChatViewer:
                                         # Try to decode the signature 
                                         # (it might be base64)
                                         decoded = base64.b64decode(
-                                            thinking_content)
-                                        # Check if it's readable text
-                                        decoded_text = decoded.decode(
-                                            'utf-8', errors='ignore')
-                                        if decoded_text.isprintable():
-                                            thinking_content = decoded_text
+                                            thinking_content
+                                        ).decode('utf-8')
+                                        thinking_content = decoded
                                     except Exception:
-                                        # If decoding fails, show a placeholder
-                                        thinking_content = (
-                                            '[Thinking content available '
-                                            'but encoded]')
-                                elif not thinking_content:
-                                    # Fallback to string representation if 
-                                    # no specific field found
-                                    thinking_content = (
-                                        str(thinking_data) 
-                                        if thinking_data else '')
+                                        pass
                             elif isinstance(thinking_data, str):
                                 thinking_content = thinking_data
                         
-                        # Also check for thinking content in the main bubble data
-                        if not thinking_content:
-                            thinking_content = (
-                                bubble_data.get('thinkingContent') or
-                                bubble_data.get('thinking_content') or
-                                bubble_data.get('thoughtContent') or
-                                ''
-                            )
-                        
                         message['thinking_content'] = thinking_content
                 
-                # Add messages with text, tool data, attached files, or thinking data
-                if (text or tool_data or message['attached_files'] or
-                        message['is_thought']):
-                    messages.append(message)
-                    
+                messages.append(message)
+                
             except json.JSONDecodeError:
                 continue
         
         return messages
     
     def extract_attached_files(self, bubble_data: Dict) -> List[Dict]:
-        """Extract attached files from bubble data"""
+        """Extract information about attached files from bubble data"""
         attached_files = []
         
-        # 1. Активный файл (открытый в редакторе)
-        current_file = bubble_data.get('currentFileLocationData')
-        if current_file and isinstance(current_file, dict):
-            # Пробуем разные поля для пути к файлу
+        # 1. Active file (open in editor)
+        current_file_data = bubble_data.get('currentFileLocationData')
+        if current_file_data:
+            # Try different fields for file path
             file_path = (
-                current_file.get('relativeWorkspacePath') or
-                current_file.get('filePath') or
-                current_file.get('path', '')
+                current_file_data.get('uri') or
+                current_file_data.get('path') or
+                current_file_data.get('filePath') or
+                current_file_data.get('file')
             )
-            line_number = current_file.get('lineNumber', 0)
+            
             if file_path:
                 attached_files.append({
                     'type': 'active',
                     'path': file_path,
-                    'line': line_number,
-                    'preview': (
-                        current_file.get('text') or
-                        current_file.get('filePreview', '')
-                    )
+                    'line': current_file_data.get('line'),
+                    'preview': current_file_data.get('preview')
                 })
         
-        # 2. Релевантные файлы из projectLayouts
-        project_layouts = bubble_data.get('projectLayouts')
-        if project_layouts:
-            if isinstance(project_layouts, list):
-                # Если это список JSON-строк
-                for layout_str in project_layouts:
-                    try:
-                        layout_data = (
-                            json.loads(layout_str)
-                            if isinstance(layout_str, str)
-                            else layout_str
-                        )
-                        relevant_files = self.extract_files_from_layout(
-                            layout_data
-                        )
-                        for file_path in relevant_files:
+        # 2. Relevant files from projectLayouts
+        project_layouts = bubble_data.get('projectLayouts', [])
+        for layout in project_layouts:
+            # If this is a list of JSON strings
+            if isinstance(layout, str):
+                try:
+                    layout_data = json.loads(layout)
+                    if isinstance(layout_data, dict):
+                        # Extract files from layout structure
+                        files = self.extract_files_from_layout(layout_data)
+                        for file_path in files:
                             attached_files.append({
                                 'type': 'project',
                                 'path': file_path
                             })
-                    except (json.JSONDecodeError, TypeError):
-                        continue
-            else:
-                # Если это объект
-                relevant_files = self.extract_files_from_layout(project_layouts)
-                for file_path in relevant_files:
+                except json.JSONDecodeError:
+                    continue
+            # If this is an object
+            elif isinstance(layout, dict):
+                files = self.extract_files_from_layout(layout)
+                for file_path in files:
                     attached_files.append({
                         'type': 'project',
                         'path': file_path
                     })
         
-        # 3. Прикрепленные файлы из codebaseContextChunks (основной источник)
-        codebase_chunks = bubble_data.get('codebaseContextChunks', [])
-        if codebase_chunks:
-            chunk_files = set()  # Используем set для избежания дублей
-            for chunk_str in codebase_chunks:
-                try:
-                    if isinstance(chunk_str, str):
-                        chunk = json.loads(chunk_str)
-                        file_path = chunk.get('relativeWorkspacePath', '')
-                        if file_path and file_path not in chunk_files:
-                            chunk_files.add(file_path)
-                            # Дополнительная информация о чанке
-                            range_info = chunk.get('range', {})
-                            start_pos = range_info.get('startPosition', {})
-                            end_pos = range_info.get('endPosition', {})
-                            
-                            attached_files.append({
-                                'type': 'context',
-                                'path': file_path,
-                                'start_line': start_pos.get('line', 0),
-                                'end_line': end_pos.get('line', 0),
-                                'content_preview': (
-                                    chunk.get('contents', '')[:100] + '...' 
-                                    if chunk.get('contents')
-                                    else ''
-                                )
-                            })
-                except (json.JSONDecodeError, TypeError):
-                    continue
+        # 3. Context files with code chunks
+        context_chunks = bubble_data.get('codebaseContextChunks', [])
+        for chunk in context_chunks:
+            if isinstance(chunk, dict):
+                file_path = chunk.get('relativeWorkspacePath')
+                if file_path:
+                    attached_files.append({
+                        'type': 'context',
+                        'path': file_path,
+                        'content': chunk.get('contents', ''),
+                        'line_range': chunk.get('lineRange')
+                    })
         
-        # 4. Выбранные файлы (если есть отдельное поле)
-        selected_files = bubble_data.get('attachedFileCodeChunksUris', [])
-        if selected_files:
-            for file_uri in selected_files:
-                # Если это dict с path, извлекаем путь
-                if isinstance(file_uri, dict):
-                    path = file_uri.get('path', str(file_uri))
-                else:
-                    path = str(file_uri)
-                
-                attached_files.append({
-                    'type': 'selected',
-                    'path': path
-                })
-        
-        # 5. Релевантные файлы из отдельного поля
+        # 4. Relevant files (automatically determined)
         relevant_files = bubble_data.get('relevantFiles', [])
-        for file_path in relevant_files:
-            if isinstance(file_path, str):
+        for file_info in relevant_files:
+            if isinstance(file_info, dict):
+                file_path = file_info.get('path') or file_info.get('uri')
+                if file_path:
+                    attached_files.append({
+                        'type': 'relevant',
+                        'path': file_path
+                    })
+            elif isinstance(file_info, str):
                 attached_files.append({
                     'type': 'relevant',
-                    'path': file_path
+                    'path': file_info
                 })
         
-        # 6. Файлы из context.fileSelections
-        context = bubble_data.get('context', {})
-        if context:
-            file_selections = context.get('fileSelections', [])
-            for file_sel in file_selections:
-                if isinstance(file_sel, dict) and file_sel.get('path'):
+        # 5. Explicitly attached files (@-files)
+        attached_chunks = bubble_data.get('attachedCodeChunks', [])
+        for chunk in attached_chunks:
+            if isinstance(chunk, dict):
+                file_path = chunk.get('path') or chunk.get('uri')
+                if file_path:
                     attached_files.append({
-                        'type': 'context_selected',
-                        'path': file_sel.get('path'),
-                        'selection': file_sel.get('selection')
+                        'type': 'selected',
+                        'path': file_path,
+                        'content': chunk.get('content', ''),
+                        'selection': chunk.get('selection')
                     })
+        
+        # 6. File selections from context
+        context = bubble_data.get('context', {})
+        if isinstance(context, dict):
+            file_selections = context.get('fileSelections', [])
+            for selection in file_selections:
+                if isinstance(selection, dict):
+                    file_path = selection.get('path') or selection.get('uri')
+                    if file_path:
+                        attached_files.append({
+                            'type': 'selected_context',
+                            'path': file_path,
+                            'selection': selection.get('selection')
+                        })
         
         return attached_files
     
     def extract_files_from_layout(self, layout_data: Dict, 
                                   current_path: str = "") -> List[str]:
-        """Рекурсивно извлечь все пути файлов из структуры проекта"""
+        """Recursively extract all file paths from project structure"""
         files = []
         
-        content = layout_data.get('content', {})
-        if not content:
-            return files
-        
-        # Обрабатываем файлы в текущей директории
-        for file_info in content.get('files', []):
-            if isinstance(file_info, dict) and file_info.get('name'):
-                file_path = (
-                    os.path.join(current_path, file_info['name'])
-                    if current_path
-                    else file_info['name']
-                )
-                files.append(file_path)
-        
-        # Рекурсивно обрабатываем поддиректории
-        for dir_info in content.get('directories', []):
-            if isinstance(dir_info, dict) and dir_info.get('name'):
-                dir_path = (
-                    os.path.join(current_path, dir_info['name'])
-                    if current_path
-                    else dir_info['name']
-                )
-                files.extend(self.extract_files_from_layout(dir_info, dir_path))
+        if isinstance(layout_data, dict):
+            for key, value in layout_data.items():
+                new_path = f"{current_path}/{key}" if current_path else key
+                
+                if isinstance(value, dict):
+                    # Recursively process subdirectories
+                    files.extend(
+                        self.extract_files_from_layout(value, new_path)
+                    )
+                elif value is None:
+                    # This is a file (leaf node)
+                    files.append(new_path)
         
         return files
     
@@ -449,100 +397,64 @@ class CursorChatViewer:
         if not attached_files:
             return ""
         
-        # Группируем файлы по типам
-        files_by_type = {}
-        for file_info in attached_files:
-            file_type = file_info.get('type', 'unknown')
-            if file_type not in files_by_type:
-                files_by_type[file_type] = []
-            files_by_type[file_type].append(file_info)
+        # Group files by type
+        active_files = [f for f in attached_files if f['type'] == 'active']
+        selected_files = [f for f in attached_files if f['type'] == 'selected']
+        context_files = [f for f in attached_files if f['type'] == 'context']
+        relevant_files = [f for f in attached_files if f['type'] == 'relevant']
+        project_files = [f for f in attached_files if f['type'] == 'project']
+        selected_context_files = [f for f in attached_files if f['type'] == 'selected_context']
         
         result = []
         
-        # Активный файл
-        if 'active' in files_by_type:
-            result.append("📍 **Активный файл:**")
-            for file_info in files_by_type['active']:
-                line_info = (f" (строка {file_info['line']})"
-                             if file_info.get('line') else "")
-                result.append(f"   `{file_info['path']}`{line_info}")
-                if file_info.get('preview'):
-                    # Apply truncation for active file preview
-                    preview_lines = file_info['preview'].splitlines()
-                    if len(preview_lines) > max_output_lines:
-                        preview = (
-                            "\n".join(preview_lines[:max_output_lines]) +
-                            f"... ({len(preview_lines) - max_output_lines} more lines)"
-                        )
-                    else:
-                        preview = file_info['preview']
-                    result.append(f"   💬 {preview}")
+        # Active files
+        for file_info in active_files:
+            result.append(f"   📍 Active file: {file_info['path']}")
+            if file_info.get('line'):
+                result.append(f"      Line: {file_info['line']}")
+            if file_info.get('preview'):
+                preview = file_info['preview'][:100] + "..." if len(file_info['preview']) > 100 else file_info['preview']
+                result.append(f"      Preview: {preview}")
         
-        # Выбранные файлы (явно прикрепленные пользователем)
-        if 'selected' in files_by_type:
-            result.append("✅ **Выбранные файлы:**")
-            for file_info in files_by_type['selected']:
-                result.append(f"   `{file_info['path']}`")
+        # Selected files (@-files)
+        for file_info in selected_files:
+            result.append(f"   ✅ Selected file: {file_info['path']}")
+            if file_info.get('selection'):
+                result.append(f"      Selection: {file_info['selection']}")
         
-        # Файлы из контекста кодовой базы
-        if 'context' in files_by_type:
-            result.append("📎 **Контекстные файлы:**")
-            for file_info in files_by_type['context']:
-                path = file_info['path']
-                start_line = file_info.get('start_line', 0)
-                end_line = file_info.get('end_line', 0)
-                
-                if start_line and end_line:
-                    line_info = f" (строки {start_line}-{end_line})"
-                else:
-                    line_info = ""
-                
-                result.append(f"   `{path}`{line_info}")
-                
-                # Показываем превью содержимого если есть
-                if file_info.get('content_preview'):
-                    # Apply truncation for context file preview
-                    preview_lines = file_info['content_preview'].splitlines()
-                    if len(preview_lines) > max_output_lines:
-                        preview = (
-                            "\n".join(preview_lines[:max_output_lines]) +
-                            f"... ({len(preview_lines) - max_output_lines} more lines)"
-                        )
-                    else:
-                        preview = file_info['content_preview']
-                    if preview:
-                        result.append(f"   💬 {preview}")
+        # Context files with code chunks
+        for file_info in context_files:
+            result.append(f"   📎 Context file: {file_info['path']}")
+            if file_info.get('line_range'):
+                result.append(f"      Lines: {file_info['line_range']}")
+            if file_info.get('content') and max_output_lines > 1:
+                content = file_info['content']
+                if len(content) > 200:
+                    content = content[:200] + "..."
+                result.append(f"      Content: {content}")
         
-        # Релевантные файлы
-        if 'relevant' in files_by_type:
-            result.append("🔗 **Релевантные файлы:**")
-            for file_info in files_by_type['relevant']:
-                result.append(f"   `{file_info['path']}`")
+        # Relevant files
+        for file_info in relevant_files:
+            result.append(f"   🔗 Relevant file: {file_info['path']}")
         
-        # Файлы из структуры проекта
-        if 'project' in files_by_type:
-            project_files = files_by_type['project']
-            result.append(
-                f"📁 **Файлы проекта** ({len(project_files)} файлов):"
-            )
-            # Показываем только первые 10 файлов, чтобы не загромождать вывод
-            for file_info in project_files[:10]:
-                result.append(f"   `{file_info['path']}`")
+        # Project files (limit to first 10 for readability)
+        if project_files:
+            result.append(f"   📁 Project files ({len(project_files)} files):")
+            for i, file_info in enumerate(project_files[:10]):
+                result.append(f"      - {file_info['path']}")
             if len(project_files) > 10:
-                result.append(f"   ... и еще {len(project_files) - 10} файлов")
+                result.append(f"      ... and {len(project_files) - 10} more files")
         
-        # Выбранные файлы из контекста
-        if 'context_selected' in files_by_type:
-            result.append("🎯 **Выбранные в контексте:**")
-            for file_info in files_by_type['context_selected']:
-                result.append(f"   `{file_info['path']}`")
-                if file_info.get('selection'):
-                    result.append(f"   📄 Выделение: {file_info['selection']}")
+        # Selected context files
+        for file_info in selected_context_files:
+            result.append(f"   🎯 Selected in context: {file_info['path']}")
+            if file_info.get('selection'):
+                result.append(f"      Selection: {file_info['selection']}")
         
         return "\n".join(result)
     
     def format_tool_call(self, tool_data: Dict, max_output_lines: int = 1) -> str:
-        """Форматировать вызов инструмента"""
+        """Format tool call"""
         if not tool_data or (
             tool_data.get('tool') is None and not tool_data.get('name')
         ):
@@ -553,7 +465,7 @@ class CursorChatViewer:
         status = tool_data.get('status', 'unknown')
         user_decision = tool_data.get('userDecision', 'unknown')
         
-        # Получаем иконку для типа инструмента
+        # Get icon for tool type
         tool_icon = "🔧 Unknown Tool"
         if isinstance(tool_type, int) and tool_type in self.tool_types:
             tool_icon = self.tool_types[tool_type]
@@ -561,20 +473,20 @@ class CursorChatViewer:
             tool_icon = f"🔧 Tool {tool_type}"
         
         output = []
-        output.append(f"🛠️ ИНСТРУМЕНТ: {tool_icon}")
-        output.append(f"   Название: {tool_name}")
-        output.append(f"   Статус: {status}")
+        output.append(f"🛠️ TOOL: {tool_icon}")
+        output.append(f"   Name: {tool_name}")
+        output.append(f"   Status: {status}")
         
         if user_decision != 'unknown':
             decision_icon = "✅" if user_decision == "accepted" else "❌"
-            output.append(f"   Решение: {decision_icon} {user_decision}")
+            output.append(f"   Decision: {decision_icon} {user_decision}")
         
-        # Показываем параметры если есть
+        # Show parameters if available
         raw_args = tool_data.get('rawArgs')
         if raw_args:
             try:
                 args = json.loads(raw_args)
-                output.append("   Параметры:")
+                output.append("   Parameters:")
                 for key, value in args.items():
                     if isinstance(value, str) and key == 'explanation':
                         pass  # Do not truncate explanation
@@ -597,14 +509,14 @@ class CursorChatViewer:
             except json.JSONDecodeError:
                 pass
         
-        # Показываем результат если есть
+        # Show result if available
         result = tool_data.get('result')
         if result:
             try:
                 result_data = json.loads(result)
-                output.append("   Результат:")
+                output.append("   Result:")
                 
-                # Специальная обработка для чтения файлов
+                # Special handling for file reading
                 if tool_name == 'read_file':
                     for key, value in result_data.items():
                         if key == 'contents':
@@ -622,11 +534,11 @@ class CursorChatViewer:
                             # Display other fields without truncation
                             output.append(f"     {key}: {value}")
                 
-                # Специальная обработка для терминальных команд
+                # Special handling for terminal commands
                 elif tool_name == 'run_terminal_cmd':
                     cmd_output = result_data.get('output', '')
                     exit_code = result_data.get('exitCodeV2', 'unknown')
-                    output.append(f"     Код выхода: {exit_code}")
+                    output.append(f"     Exit code: {exit_code}")
                     if cmd_output:
                         # Apply truncation for command output
                         lines = cmd_output.splitlines()
@@ -635,14 +547,14 @@ class CursorChatViewer:
                                 "\n".join(lines[:max_output_lines]) +
                                 f"... ({len(lines) - max_output_lines} more lines)"
                             )
-                        output.append(f"     Вывод: {cmd_output}")
+                        output.append(f"     Output: {cmd_output}")
                 
-                # Специальная обработка для редактирования файлов
+                # Special handling for file editing
                 elif tool_name in ['edit_file', 'search_replace']:
                     if 'diff' in result_data:
                         diff_data = result_data['diff']
                         if 'chunks' in diff_data:
-                            output.append("     Изменения:")
+                            output.append("     Changes:")
                             total_lines_added = sum(
                                 chunk.get('linesAdded', 0)
                                 for chunk in diff_data['chunks']
@@ -655,7 +567,7 @@ class CursorChatViewer:
                             if max_output_lines == 1:
                                 output.append(
                                     f"       +{total_lines_added} -{total_lines_removed} "
-                                    "строк (детали скрыты)"
+                                    "lines (details hidden)"
                                 )
                             else:
                                 # Show detailed diff chunks up to max_output_lines
@@ -684,17 +596,17 @@ class CursorChatViewer:
                                 ):  # Indicate total more lines
                                     output.append(
                                         f"       ... (Total changes: +{total_lines_added} "
-                                        f"-{total_lines_removed} строк)"
+                                        f"-{total_lines_removed} lines)"
                                     )
                 
-                # Для других инструментов показываем краткую информацию
+                # For other tools show brief information
                 else:
                     # Apply truncation for other results
                     if isinstance(result_data, dict):
                         items = list(result_data.items())
                         if len(items) > max_output_lines:
                             output.append(
-                                f"     (Показано {max_output_lines} из {len(items)} полей)"
+                                f"     (Showing {max_output_lines} of {len(items)} fields)"
                             )
                             items = items[:max_output_lines]
                         for key, value in items:
@@ -741,268 +653,199 @@ class CursorChatViewer:
             total_tokens = input_tokens + output_tokens
             
             if total_tokens > 0:
-                output.append(
-                    f"🪙 ТОКЕНЫ: {total_tokens} "
-                    f"(вход: {input_tokens}, выход: {output_tokens})"
-                )
-                
-                # Try to infer model from token patterns or context
-                # model_hint = self.infer_model_from_context(message, total_tokens)
-                # if model_hint:
-                #     output.append(f"🤖 МОДЕЛЬ: {model_hint}")
-                # else:
-                #     output.append("🤖 МОДЕЛЬ: Не указана в БД")
-        
-        # Usage UUID (for tracking)
-        # if usage_uuid:
-        #     output.append(f"🆔 Usage ID: {usage_uuid}")
-        
-        # Server bubble ID (for debugging)
-        # if server_bubble_id:
-        #     output.append(f"🔗 Server ID: {server_bubble_id}")
+                # Infer model based on context
+                inferred_model = self.infer_model_from_context(message, total_tokens)
+                output.append(f"🔢 Tokens: {input_tokens}→{output_tokens} ({total_tokens} total)")
+                if inferred_model:
+                    output.append(f"🤖 Inferred model: {inferred_model}")
         
         # Agentic mode indicator
         if is_agentic:
-            output.append("🤖 РЕЖИМ: Агентский")
+            output.append("🧠 Agentic mode: enabled")
         
-        # Web usage indicator
+        # Unified mode
+        if unified_mode:
+            output.append(f"🔄 Unified mode: {unified_mode}")
+        
+        # Web usage
         if use_web:
-            output.append("🌐 ИСПОЛЬЗУЕТ: Веб-поиск")
+            output.append("🌐 Web search: used")
         
-        # Unified mode indicator
-        if unified_mode is not None:
-            output.append(f"🔧 РЕЖИМ: Unified {unified_mode}")
+        # Capabilities
+        if capabilities_ran:
+            cap_list = list(capabilities_ran.keys())
+            if cap_list:
+                output.append(f"⚙️ Capabilities: {', '.join(cap_list[:3])}")
+                if len(cap_list) > 3:
+                    output.append(f"   ... and {len(cap_list) - 3} more")
         
         # Refund status
         if is_refunded:
-            output.append("💸 СТАТУС: Возвращен")
+            output.append("💰 Status: refunded")
         
-        # Capabilities that ran (if any significant ones)
-        if capabilities_ran:
-            significant_caps = []
-            for cap_name, cap_list in capabilities_ran.items():
-                if cap_list:  # Non-empty list
-                    significant_caps.append(f"{cap_name}({len(cap_list)})")
-            
-            if significant_caps:
-                output.append(
-                    f"⚙️ ВОЗМОЖНОСТИ: {', '.join(significant_caps)}"
-                )
+        # Usage UUID (for debugging)
+        if usage_uuid:
+            output.append(f"🔍 Usage ID: {usage_uuid[:8]}...")
         
         return "\n".join(output)
     
     def infer_model_from_context(self, message: Dict, total_tokens: int) -> str:
-        """Try to infer the model used based on available context"""
-        # Check if this is an agentic message (might indicate specific models)
-        if message.get('is_agentic', False):
-            return "Вероятно Claude (агентский режим)"
+        """Infer likely model based on context clues and usage patterns"""
+        # Check for explicit model mentions in text
+        text = message.get('text', '').lower()
+        if 'claude' in text or 'sonnet' in text:
+            return "Claude (mentioned in text)"
+        elif 'gpt' in text or 'openai' in text:
+            return "GPT (mentioned in text)"
+        elif 'o1' in text:
+            return "OpenAI o1 (mentioned in text)"
         
-        # Check capabilities for hints about model type
-        capabilities_ran = message.get('capabilities_ran', {})
-        if capabilities_ran:
-            # If there are many capabilities, it might be a more advanced model
-            active_caps = [cap for cap, data in capabilities_ran.items() 
-                          if data]
-            if len(active_caps) > 5:
-                return "Вероятно продвинутая модель"
+        # Check agentic mode (typically Claude)
+        if message.get('is_agentic'):
+            return "Claude (agentic mode)"
         
-        # Check token patterns (rough heuristics)
-        if total_tokens > 10000:
-            return "Большая модель (много токенов)"
-        elif total_tokens > 1000:
-            return "Средняя модель"
+        # Check token usage patterns
+        if total_tokens > 100000:  # Very high token usage
+            return "Claude (high token usage)"
+        elif total_tokens > 32000:  # High token usage
+            return "GPT-4 or Claude (high token usage)"
         
-        # Check message content for model hints
-        text = message.get('text', '')
-        if text:
-            text_lower = text.lower()
-            if any(hint in text_lower for hint in 
-                   ['claude', 'sonnet', 'haiku']):
-                return "Claude (упомянут в тексте)"
-            elif any(hint in text_lower for hint in 
-                     ['gpt', 'openai']):
-                return "GPT (упомянут в тексте)"
+        # Check unified mode patterns
+        unified_mode = message.get('unified_mode')
+        if unified_mode == 4:
+            return "Advanced model (unified mode 4)"
+        elif unified_mode == 2:
+            return "Standard model (unified mode 2)"
         
-        return ""
+        # Check capabilities for complexity
+        capabilities = message.get('capabilities_ran', {})
+        if len(capabilities) > 5:
+            return "Advanced model (complex capabilities)"
+        
+        return ""  # Cannot infer
     
     def format_dialog(self, messages: List[Dict], dialog_name: str, 
                       project_name: str, max_output_lines: int) -> str:
-        """Форматировать диалог для отображения"""
+        """Format dialog for display"""
         output = []
         output.append("=" * 60)
-        output.append(f"ПРОЕКТ: {project_name}")
-        output.append(f"ДИАЛОГ: {dialog_name}")
+        output.append(f"PROJECT: {project_name}")
+        output.append(f"DIALOG: {dialog_name}")
         output.append("=" * 60)
         output.append("")
         
-        # Token counters for summary
-        total_input_tokens = 0
-        total_output_tokens = 0
-        messages_with_tokens = 0
-        
-        for msg in messages:
-            msg_type = msg['type']
-            text = msg['text']
-            tool_data = msg.get('tool_data')
-            attached_files = msg.get('attached_files', [])
-            is_thought = msg.get('is_thought', False)
-            thinking_duration = msg.get('thinking_duration', 0)
+        for i, message in enumerate(messages):
+            message_type = message.get('type')
+            text = message.get('text', '').strip()
+            tool_data = message.get('tool_data')
+            attached_files = message.get('attached_files', [])
+            is_thought = message.get('is_thought', False)
+            thinking_duration = message.get('thinking_duration', 0)
+            thinking_content = message.get('thinking_content', '')
             
-            # Count tokens
-            token_count = msg.get('token_count', {})
-            if token_count:
-                input_tokens = token_count.get('inputTokens', 0)
-                output_tokens = token_count.get('outputTokens', 0)
-                total_input_tokens += input_tokens
-                total_output_tokens += output_tokens
-                if input_tokens > 0 or output_tokens > 0:
-                    messages_with_tokens += 1
+            # Skip empty messages without tools or attachments
+            if not text and not tool_data and not attached_files and not is_thought:
+                continue
             
-            # Показываем пользовательские сообщения
-            if msg_type == 1 and text:
-                output.append("👤 ПОЛЬЗОВАТЕЛЬ:")
-                output.append(text)
+            # AI thinking bubble
+            if is_thought:
+                output.append("🧠 AI THINKING:")
+                if thinking_duration > 0:
+                    output.append(f"   Duration: {thinking_duration/1000:.1f}s")
+                if thinking_content:
+                    # Truncate thinking content if too long
+                    if len(thinking_content) > 500:
+                        thinking_content = thinking_content[:500] + "..."
+                    output.append(f"   Content: {thinking_content}")
+                output.append("-" * 40)
+                continue
+            
+            # User message
+            if message_type == 1:
+                output.append("👤 USER:")
+                if text:
+                    output.append(text)
                 
-                # Token info for user messages
-                token_info = self.format_token_info(msg)
-                if token_info:
-                    output.append("")
-                    output.append(token_info)
-                
-                # Показываем прикрепленные файлы для пользовательских сообщений
+                # Show attached files
                 if attached_files:
-                    files_output = self.format_attached_files(
+                    output.append("")
+                    output.append("📎 ATTACHED FILES:")
+                    attached_output = self.format_attached_files(
                         attached_files, max_output_lines
                     )
-                    if files_output:
-                        output.append("")
-                        output.append(files_output)
+                    output.append(attached_output)
                 
                 output.append("-" * 40)
-                output.append("")
             
-            # Показываем ответы ИИ
-            elif msg_type == 2 and text:
-                output.append("🤖 ИИ:")
-                output.append(text)
+            # AI response
+            elif message_type == 2:
+                # Show tool call first if present
+                if tool_data:
+                    tool_output = self.format_tool_call(tool_data, max_output_lines)
+                    if tool_output:
+                        output.append(tool_output)
+                        output.append("-" * 40)
                 
-                # Token info for AI messages
-                token_info = self.format_token_info(msg)
-                if token_info:
-                    output.append("")
-                    output.append(token_info)
-                
-                output.append("-" * 40)
-                output.append("")
-            
-            # Показываем мыслительный процесс ИИ
-            elif is_thought:
-                duration_seconds = thinking_duration / 1000.0  # Convert ms to seconds
-                thinking_content = msg.get('thinking_content', '')
-
-                # Determine if the thinking content is meaningful (i.e., not just encoded or raw JSON)
-                is_meaningful_content = not (thinking_content.startswith('AVSoXO') or thinking_content.startswith('{'))
-
-                if is_meaningful_content and thinking_content:
-                    output.append(f"💭 ИИ: Мыслительный процесс ({duration_seconds:.1f}с)")
+                # Then show AI response
+                if text:
+                    output.append("🤖 AI:")
+                    output.append(text)
                     
-                    # Apply line limiting to meaningful thinking content
-                    thinking_lines = thinking_content.split('\n')
-                    if max_output_lines > 0 and len(thinking_lines) > max_output_lines:
-                        limited_lines = thinking_lines[:max_output_lines]
-                        output.extend(limited_lines)
-                        remaining_lines = len(thinking_lines) - max_output_lines
-                        output.append(f"... ({remaining_lines} строк скрыто)")
-                    else:
-                        output.extend(thinking_lines)
-                elif not is_meaningful_content and thinking_content:
-                    # If it's encoded/structured but not meaningful, just show the duration line
-                    output.append(f"💭 ИИ: Мыслительный процесс ({duration_seconds:.1f}с)")
-                else:  # No thinking_content at all
-                    output.append(f"💭 ИИ: Мыслительный процесс ({duration_seconds:.1f}с)")
-                
-                # Token info for thinking bubbles
-                token_info = self.format_token_info(msg)
-                if token_info:
-                    output.append("")
-                    output.append(token_info)
-                
-                output.append("-" * 40)
-                output.append("")
-            
-            # Показываем вызовы инструментов
-            elif tool_data:
-                tool_output = self.format_tool_call(tool_data, max_output_lines)
-                if tool_output:
-                    output.append(tool_output)
-                    
-                    # Token info for tool calls
-                    token_info = self.format_token_info(msg)
+                    # Show token info and metadata
+                    token_info = self.format_token_info(message)
                     if token_info:
                         output.append("")
                         output.append(token_info)
                     
                     output.append("-" * 40)
-                    output.append("")
             
-            # Неизвестные типы
-            elif text:
-                output.append(f"❓ НЕИЗВЕСТНО (тип {msg_type}):")
-                output.append(text)
-                
-                # Token info for unknown types
-                token_info = self.format_token_info(msg)
-                if token_info:
-                    output.append("")
-                    output.append(token_info)
-                
-                output.append("-" * 40)
-                output.append("")
-        
-        # Add token summary at the end
-        total_tokens = total_input_tokens + total_output_tokens
-        if total_tokens > 0:
-            output.append("=" * 60)
-            output.append("📊 СВОДКА ПО ТОКЕНАМ")
-            output.append("=" * 60)
-            output.append(f"Всего токенов: {total_tokens}")
-            output.append(f"  • Входящие токены: {total_input_tokens}")
-            output.append(f"  • Исходящие токены: {total_output_tokens}")
-            output.append(f"Сообщений с токенами: {messages_with_tokens}")
-            output.append("")
+            # Other message types
+            else:
+                if text or tool_data:
+                    output.append(f"📝 MESSAGE (type {message_type}):")
+                    if text:
+                        output.append(text)
+                    
+                    if tool_data:
+                        tool_output = self.format_tool_call(tool_data, max_output_lines)
+                        if tool_output:
+                            output.append(tool_output)
+                    
+                    output.append("-" * 40)
         
         return "\n".join(output)
     
     def list_projects(self):
-        """Показать список всех проектов"""
+        """Show list of all projects"""
         projects = self.get_projects()
         
-        print("ДОСТУПНЫЕ ПРОЕКТЫ:")
+        if not projects:
+            print("No projects found.")
+            return
+        
+        print("Available projects:")
         print("=" * 50)
         
-        for i, project in enumerate(projects, 1):
-            latest = project['latest_dialog']
-            if latest:
-                last_updated = datetime.fromtimestamp(
-                    latest.get('lastUpdatedAt', 0) / 1000
-                )
-                dialog_count = len(project['composers'])
-                print(f"{i:2d}. {project['project_name']}")
-                print(f"    Путь: {project['folder_path']}")
-                print(f"    Диалогов: {dialog_count}")
-                print(
-                    f"    Последний диалог: {latest.get('name', 'Без названия')}"
-                )
-                print(
-                    f"    Обновлен: {last_updated.strftime('%Y-%m-%d %H:%M:%S')}"
-                )
-                print()
+        for project in projects:
+            print(f"📁 {project['project_name']}")
+            print(f"   Path: {project['folder_path']}")
+            print(f"   Dialogs: {len(project['composers'])}")
+            
+            if project['latest_dialog']:
+                latest = project['latest_dialog']
+                name = latest.get('name', 'Untitled')
+                timestamp = latest.get('lastUpdatedAt', 0)
+                if timestamp:
+                    date = datetime.fromtimestamp(timestamp / 1000)
+                    print(f"   Latest: {name} ({date.strftime('%Y-%m-%d %H:%M')})")
+            
+            print()
     
     def list_dialogs(self, project_name: str):
-        """Показать список диалогов для проекта"""
+        """Show list of dialogs for project"""
         projects = self.get_projects()
         
-        # Найти проект
+        # Find project
         project = None
         for p in projects:
             if project_name.lower() in p['project_name'].lower():
@@ -1010,127 +853,126 @@ class CursorChatViewer:
                 break
         
         if not project:
-            print(f"Проект '{project_name}' не найден")
+            print(f"Project '{project_name}' not found.")
             return
         
-        print(f"ДИАЛОГИ В ПРОЕКТЕ: {project['project_name']}")
+        composers = project['composers']
+        if not composers:
+            print(f"No dialogs found in project '{project['project_name']}'.")
+            return
+        
+        print(f"Dialogs in project '{project['project_name']}':")
         print("=" * 50)
         
-        composers = sorted(
-            project['composers'],
-            key=lambda x: x.get('lastUpdatedAt', 0),
-            reverse=True
-        )
+        # Sort by last updated time
+        composers.sort(key=lambda x: x.get('lastUpdatedAt', 0), reverse=True)
         
-        for i, composer in enumerate(composers, 1):
-            last_updated = datetime.fromtimestamp(
-                composer.get('lastUpdatedAt', 0) / 1000
-            )
-            created = datetime.fromtimestamp(
-                composer.get('createdAt', 0) / 1000
-            )
+        for composer in composers:
+            name = composer.get('name', 'Untitled')
+            composer_id = composer.get('composerId', 'unknown')
+            timestamp = composer.get('lastUpdatedAt', 0)
             
-            dialog_name_to_display = composer.get('name', 'Без названия')
-            print(f"{i:2d}. {dialog_name_to_display}")
-            print(f"    ID: {composer['composerId']}")
-            print(f"    Создан: {created.strftime('%Y-%m-%d %H:%M:%S')}")
-            print(
-                f"    Обновлен: {last_updated.strftime('%Y-%m-%d %H:%M:%S')}"
-            )
+            if timestamp:
+                date = datetime.fromtimestamp(timestamp / 1000)
+                print(f"💬 {name}")
+                print(f"   ID: {composer_id}")
+                print(f"   Updated: {date.strftime('%Y-%m-%d %H:%M')}")
+            else:
+                print(f"💬 {name} (ID: {composer_id})")
+            
             print()
     
     def show_dialog(self, project_name: Optional[str] = None, 
                     dialog_name: Optional[str] = None, 
                     max_output_lines: int = 1):
-        """Показать диалог"""
+        """Show dialog"""
         projects = self.get_projects()
         
         if not projects:
-            print("Проекты не найдены")
+            print("No projects found.")
             return
         
-        # Выбрать проект
+        # Find project
+        project = None
         if project_name:
-            project = None
             for p in projects:
                 if project_name.lower() in p['project_name'].lower():
                     project = p
                     break
+            
             if not project:
-                print(f"Проект '{project_name}' не найден")
+                print(f"Project '{project_name}' not found.")
                 return
         else:
-            # Самый свежий проект
+            # Use most recent project
             project = projects[0]
         
-        # Выбрать диалог
+        # Find dialog
+        composer = None
         if dialog_name:
-            dialog = None
-            for composer in project['composers']:
-                composer_name = composer.get('name', '')
-                if dialog_name.lower() in composer_name.lower():
-                    dialog = composer
+            for c in project['composers']:
+                c_name = c.get('name', '').lower()
+                if dialog_name.lower() in c_name:
+                    composer = c
                     break
-            if not dialog:
-                print(
-                    f"Диалог '{dialog_name}' не найден в проекте "
-                    f"'{project['project_name']}'"
-                )
+            
+            if not composer:
+                print(f"Dialog '{dialog_name}' not found in project '{project['project_name']}'.")
                 return
         else:
-            # Самый свежий диалог
-            if not project['composers']:
-                print(f"В проекте '{project['project_name']}' нет диалогов")
-                return
-            dialog = max(
-                project['composers'], key=lambda x: x.get('lastUpdatedAt', 0)
-            )
-        
-        # Получить сообщения диалога
-        try:
-            messages = self.get_dialog_messages(dialog['composerId'])
-            if not messages:
-                dialog_name = dialog.get(
-                    'name', f"Диалог {dialog['composerId'][:8]}"
+            # Use most recent dialog
+            if project['composers']:
+                composer = max(
+                    project['composers'], 
+                    key=lambda x: x.get('lastUpdatedAt', 0)
                 )
-                print(f"Сообщения в диалоге '{dialog_name}' не найдены")
+            else:
+                print(f"No dialogs found in project '{project['project_name']}'.")
+                return
+        
+        # Get dialog messages
+        composer_id = composer.get('composerId')
+        if not composer_id:
+            print("Dialog ID not found.")
+            return
+        
+        try:
+            messages = self.get_dialog_messages(composer_id)
+            
+            if not messages:
+                print("No messages found in dialog.")
                 return
             
-            # Отобразить диалог
-            dialog_name = dialog.get(
-                'name', f"Диалог {dialog['composerId'][:8]}"
+            # Display dialog
+            dialog_output = self.format_dialog(
+                messages, 
+                composer.get('name', 'Untitled'), 
+                project['project_name'],
+                max_output_lines
             )
-            formatted_dialog = self.format_dialog(
-                messages, dialog_name, project['project_name'], max_output_lines
-            )
-            print(formatted_dialog)
+            print(dialog_output)
             
-        except Exception:
-            print("Ошибка при получении диалога")
+        except Exception as e:
+            print(f"Error reading dialog: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Просмотр диалогов из базы данных Cursor IDE'
+    parser = argparse.ArgumentParser(description='Cursor Chat Viewer')
+    parser.add_argument(
+        '--project', '-p', help='Project name (partial match supported)'
     )
     parser.add_argument(
-        '--project', '-p', help='Название проекта (частичное совпадение)'
+        '--dialog', '-d', help='Dialog name (partial match supported)'
     )
     parser.add_argument(
-        '--dialog', '-d', help='Название диалога (частичное совпадение)'
+        '--list-projects', action='store_true', help='Show list of projects'
     )
     parser.add_argument(
-        '--list-projects', action='store_true', help='Показать список проектов'
+        '--list-dialogs', help='Show list of dialogs for project'
     )
     parser.add_argument(
-        '--list-dialogs', help='Показать список диалогов для проекта'
-    )
-    parser.add_argument(
-        '--max-output-lines', '-m', type=int, default=1,
-        help=(
-            'Максимальное количество строк для вывода результатов инструментов '
-            'и прикрепленных файлов (по умолчанию: 1)'
-        )
+        '--max-output-lines', type=int, default=1,
+        help='Maximum lines to show for tool outputs (default: 1)'
     )
     
     args = parser.parse_args()
