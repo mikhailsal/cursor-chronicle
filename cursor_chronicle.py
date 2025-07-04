@@ -49,6 +49,9 @@ class CursorChatViewer:
         """Get list of all projects with their metadata"""
         projects = []
 
+        if not self.workspace_storage_path.exists():
+            return projects
+
         for workspace_dir in self.workspace_storage_path.iterdir():
             if not workspace_dir.is_dir():
                 continue
@@ -394,21 +397,22 @@ class CursorChatViewer:
         if not attached_files:
             return ""
 
-        # Group files by type
-        active_files = [f for f in attached_files if f["type"] == "active"]
-        selected_files = [f for f in attached_files if f["type"] == "selected"]
-        context_files = [f for f in attached_files if f["type"] == "context"]
-        relevant_files = [f for f in attached_files if f["type"] == "relevant"]
-        project_files = [f for f in attached_files if f["type"] == "project"]
+        # Group files by type (safely handle missing 'type' key)
+        active_files = [f for f in attached_files if f.get("type") == "active"]
+        selected_files = [f for f in attached_files if f.get("type") == "selected"]
+        context_files = [f for f in attached_files if f.get("type") == "context"]
+        relevant_files = [f for f in attached_files if f.get("type") == "relevant"]
+        project_files = [f for f in attached_files if f.get("type") == "project"]
         selected_context_files = [
-            f for f in attached_files if f["type"] == "selected_context"
+            f for f in attached_files if f.get("type") == "selected_context"
         ]
 
         result = []
 
         # Active files
         for file_info in active_files:
-            result.append(f"   📍 Active file: {file_info['path']}")
+            file_path = file_info.get('path', 'unknown')
+            result.append(f"   📍 Active file: {file_path}")
             if file_info.get("line"):
                 result.append(f"      Line: {file_info['line']}")
             if file_info.get("preview"):
@@ -421,13 +425,15 @@ class CursorChatViewer:
 
         # Selected files (@-files)
         for file_info in selected_files:
-            result.append(f"   ✅ Selected file: {file_info['path']}")
+            file_path = file_info.get('path', 'unknown')
+            result.append(f"   ✅ Selected file: {file_path}")
             if file_info.get("selection"):
                 result.append(f"      Selection: {file_info['selection']}")
 
         # Context files with code chunks
         for file_info in context_files:
-            result.append(f"   📎 Context file: {file_info['path']}")
+            file_path = file_info.get('path', 'unknown')
+            result.append(f"   📎 Context file: {file_path}")
             if file_info.get("line_range"):
                 result.append(f"      Lines: {file_info['line_range']}")
             if file_info.get("content") and max_output_lines > 1:
@@ -438,19 +444,22 @@ class CursorChatViewer:
 
         # Relevant files
         for file_info in relevant_files:
-            result.append(f"   🔗 Relevant file: {file_info['path']}")
+            file_path = file_info.get('path', 'unknown')
+            result.append(f"   🔗 Relevant file: {file_path}")
 
         # Project files (limit to first 10 for readability)
         if project_files:
             result.append(f"   📁 Project files ({len(project_files)} files):")
             for i, file_info in enumerate(project_files[:10]):
-                result.append(f"      - {file_info['path']}")
+                file_path = file_info.get('path', 'unknown')
+                result.append(f"      - {file_path}")
             if len(project_files) > 10:
                 result.append(f"      ... and {len(project_files) - 10} more files")
 
         # Selected context files
         for file_info in selected_context_files:
-            result.append(f"   🎯 Selected in context: {file_info['path']}")
+            file_path = file_info.get('path', 'unknown')
+            result.append(f"   🎯 Selected in context: {file_path}")
             if file_info.get("selection"):
                 result.append(f"      Selection: {file_info['selection']}")
 

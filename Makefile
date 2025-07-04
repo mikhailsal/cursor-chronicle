@@ -9,6 +9,12 @@ install:  ## Install package in development mode
 test:  ## Run tests
 	python -m pytest tests/ -v
 
+test-integration:  ## Run integration tests only
+	python -m pytest tests/test_integration.py -v
+
+test-unit:  ## Run unit tests only
+	python -m pytest tests/test_cursor_chronicle.py -v
+
 format:  ## Format code
 	black . && isort .
 
