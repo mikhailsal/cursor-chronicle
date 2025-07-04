@@ -1,4 +1,4 @@
-# Cursor Chat Viewer
+# Cursor Chronicle
 
 Python script for extracting and displaying dialogs from Cursor IDE database with support for tools and attached files.
 
@@ -31,27 +31,27 @@ The script extracts data from SQLite databases where Cursor stores all dialog hi
 
 ### Show most recent dialog (default)
 ```bash
-python3 cursor_chat_viewer.py
+python3 cursor_chronicle.py
 ```
 
 ### Show list of all projects
 ```bash
-python3 cursor_chat_viewer.py --list-projects
+python3 cursor_chronicle.py --list-projects
 ```
 
 ### Show dialogs for specific project
 ```bash
-python3 cursor_chat_viewer.py --list-dialogs ai-chatting
+python3 cursor_chronicle.py --list-dialogs ai-chatting
 ```
 
 ### Show specific dialog
 ```bash
-python3 cursor_chat_viewer.py --project ai-chatting --dialog "database"
+python3 cursor_chronicle.py --project ai-chatting --dialog "database"
 ```
 
 ### Show dialog from specific project (most recent)
 ```bash
-python3 cursor_chat_viewer.py --project tts-python-ai
+python3 cursor_chronicle.py --project tts-python-ai
 ```
 
 ## Parameters
@@ -78,7 +78,7 @@ You need to find out where Cursor IDE stores the database...
    📍 Active file: anime/Kill la Kill 01-04 summary.txt
       Line: 5
       Preview: The third episode shows Satsuki herself in a new light...
-   🔗 Relevant file: cursor_chat_viewer.py
+   🔗 Relevant file: cursor_chronicle.py
    🔗 Relevant file: README.md
    📁 Project files (9 files):
       - anime/[HorribleSubs] Kill la Kill - 01 [720p].ass
@@ -167,16 +167,16 @@ The script reads data from the following locations:
 
 ```bash
 # View all projects
-./cursor_chat_viewer.py --list-projects
+./cursor_chronicle.py --list-projects
 
 # Find project with "python" in name
-./cursor_chat_viewer.py --project python
+./cursor_chronicle.py --project python
 
 # Find dialog about tests in ai-chatting project
-./cursor_chat_viewer.py --project ai-chatting --dialog test
+./cursor_chronicle.py --project ai-chatting --dialog test
 
 # Show all dialogs for project
-./cursor_chat_viewer.py --list-dialogs starcraft7x
+./cursor_chronicle.py --list-dialogs starcraft7x
 ```
 
 ## What's New in Version 2.0

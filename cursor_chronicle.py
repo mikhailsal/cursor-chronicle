@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cursor Chat Viewer
+Cursor Chronicle
 Extracts and displays dialogs from Cursor IDE database with support for 
 attached files.
 """
@@ -957,7 +957,7 @@ class CursorChatViewer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Cursor Chat Viewer')
+    parser = argparse.ArgumentParser(description='Cursor Chronicle')
     parser.add_argument(
         '--project', '-p', help='Project name (partial match supported)'
     )
