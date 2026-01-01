@@ -1,15 +1,15 @@
 # Cursor Chronicle
 
-A powerful tool for extracting and displaying dialogs from Cursor IDE database with comprehensive support for attached files, tool calls, and conversation metadata.
+A powerful tool for extracting, searching, and displaying dialogs from Cursor IDE database with comprehensive support for attached files, tool calls, and conversation metadata.
 
 ## Features
 
 - 📊 **Complete Conversation History**: Extract full chat sessions with AI assistants
+- 🔍 **Full-Text Search**: Search across all chat history for any keyword
 - 🛠️ **Tool Call Analysis**: Detailed view of tool executions and results
 - 📎 **File Attachment Support**: See all attached files and context
 - 🧠 **AI Thinking Process**: View AI reasoning and thinking duration
 - 📈 **Token Usage Tracking**: Monitor token consumption and infer models
-- 🔍 **Advanced Search**: Find specific projects and conversations
 - 📋 **Rich Metadata**: Access 100+ fields of conversation data
 
 ## Installation
@@ -86,6 +86,76 @@ cursor-chronicle --project "web-app" --dialog "authentication"
 cursor-chronicle --project "api" --dialog "refactor" --max-output-lines 20
 ```
 
+## Search History
+
+The `search_history.py` script provides full-text search across all Cursor IDE chat history.
+
+### Search Commands
+
+```bash
+# Search for a keyword across all history
+python search_history.py "KiloCode"
+
+# Search with progress output
+python search_history.py "API" --verbose
+
+# Search in specific project only
+python search_history.py "bug" --project "my-project"
+
+# Case-sensitive search
+python search_history.py "Error" --case-sensitive
+```
+
+### List Matching Dialogs
+
+```bash
+# Show all dialogs containing the keyword with match counts
+python search_history.py "KiloCode" --list-dialogs
+```
+
+Output example:
+```
+🔍 Dialogs containing 'KiloCode':
+============================================================
+📁 ai-proxy / CI comparison dialog
+   Matches: 9 | Date: 2025-09-30
+   ID: a001bbfc-219f-4d0d-bd6d-f16af617c994
+
+📁 MyJune24 / Reduce system prompt
+   Matches: 37 | Date: 2025-09-05
+   ID: 25f0e5ec-7490-41b0-8beb-1fc57e02984b
+```
+
+### View Full Dialog
+
+```bash
+# Show complete dialog by composer ID (from --list-dialogs output)
+python search_history.py --show-dialog "a001bbfc-219f-4d0d-bd6d-f16af617c994"
+```
+
+### Search with Context
+
+```bash
+# Show surrounding messages for each match
+python search_history.py "error" --show-context
+
+# Customize context size (default: 3 messages)
+python search_history.py "bug" --show-context --context-size 5
+```
+
+### Search Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--project` | `-p` | Filter by project name (partial match) |
+| `--case-sensitive` | `-c` | Case-sensitive search |
+| `--limit` | `-l` | Maximum results (default: 50) |
+| `--show-context` | `-x` | Show surrounding messages |
+| `--context-size` | | Context messages count (default: 3) |
+| `--show-dialog` | `-d` | Show full dialog by composer ID |
+| `--list-dialogs` | | List dialogs with match counts |
+| `--verbose` | `-v` | Show search progress |
+
 ## Output Format
 
 Cursor Chronicle provides rich, formatted output including:
@@ -129,8 +199,10 @@ make help
 
 ```
 cursor-chronicle/
-├── cursor_chronicle.py          # Main application
+├── cursor_chronicle.py          # Main application (view dialogs)
+├── search_history.py            # Search across all history
 ├── cursor_chronicle.md          # Detailed documentation
+├── cursor_data_structure.md     # Database structure docs
 ├── pyproject.toml              # Modern Python project config
 ├── tests/                      # Test suite
 ├── Makefile                    # Development commands
@@ -270,6 +342,13 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 ```
 
 ## Changelog
+
+### Version 1.1.0
+- **New**: Full-text search across all chat history (`search_history.py`)
+- **New**: List dialogs containing search term with `--list-dialogs`
+- **New**: Show full dialog by composer ID with `--show-dialog`
+- **New**: Context display around matches with `--show-context`
+- **New**: Project filtering for search with `--project`
 
 ### Version 1.0.0
 - Initial release with full conversation extraction
