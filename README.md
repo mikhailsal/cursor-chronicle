@@ -66,11 +66,14 @@ cursor-chronicle --list-all
 
 ### List dialogs with time filtering
 ```bash
-# Dialogs updated after a specific date (oldest first by default)
+# Dialogs created after a specific date (oldest first by default)
 cursor-chronicle --list-all --from 2024-01-01
 
 # Dialogs in a date range
 cursor-chronicle --list-all --from 2024-01-01 --to 2024-12-31
+
+# Filter/sort by last updated date instead of creation date
+cursor-chronicle --list-all --from 2024-01-01 --updated
 
 # Newest first
 cursor-chronicle --list-all --desc
@@ -146,10 +149,11 @@ cursor-chronicle --list-all --desc
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--list-all` | | List all dialogs across all projects |
-| `--from` | | Filter dialogs updated after date (YYYY-MM-DD) |
-| `--to` | | Filter dialogs updated before date (YYYY-MM-DD) |
+| `--from` | | Filter dialogs after date (YYYY-MM-DD) |
+| `--to` | | Filter dialogs before date (YYYY-MM-DD) |
 | `--sort` | | Sort by: date, name, or project (default: date) |
 | `--desc` | | Sort descending (newest/Z first) |
+| `--updated` | | Use last updated date instead of creation date |
 | `--limit` | | Maximum dialogs to display (default: 50) |
 | `--project` | `-p` | Filter by project name (partial match) |
 
@@ -415,6 +419,7 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 - **New**: Filter dialogs by time interval with `--from` and `--to`
 - **New**: Customizable sorting: by date, name, or project (`--sort`)
 - **New**: Ascending/descending sort order (`--desc`)
+- **New**: Sort/filter by creation date (default) or last updated (`--updated`)
 - **New**: Limit results count (`--limit`)
 
 ### Version 1.1.0

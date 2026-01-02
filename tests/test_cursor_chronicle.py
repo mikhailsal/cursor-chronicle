@@ -215,10 +215,32 @@ class TestListAllDialogs(unittest.TestCase):
                 self.assertGreaterEqual(dialog_date, start)
                 self.assertLessEqual(dialog_date, end)
 
-    def test_get_all_dialogs_sorted_by_date_asc(self):
-        """Test that results are sorted by date ascending (oldest first) by default"""
+    def test_get_all_dialogs_sorted_by_created_asc(self):
+        """Test that results are sorted by created_at ascending (oldest first) by default"""
         viewer = cursor_chronicle.CursorChatViewer()
         dialogs = viewer.get_all_dialogs()
+        
+        if len(dialogs) > 1:
+            for i in range(len(dialogs) - 1):
+                current = dialogs[i].get("created_at", 0)
+                next_one = dialogs[i + 1].get("created_at", 0)
+                self.assertLessEqual(current, next_one)
+
+    def test_get_all_dialogs_sorted_by_created_desc(self):
+        """Test that results can be sorted by created_at descending (newest first)"""
+        viewer = cursor_chronicle.CursorChatViewer()
+        dialogs = viewer.get_all_dialogs(sort_desc=True)
+        
+        if len(dialogs) > 1:
+            for i in range(len(dialogs) - 1):
+                current = dialogs[i].get("created_at", 0)
+                next_one = dialogs[i + 1].get("created_at", 0)
+                self.assertGreaterEqual(current, next_one)
+
+    def test_get_all_dialogs_sorted_by_updated_asc(self):
+        """Test sorting by last_updated ascending with use_updated=True"""
+        viewer = cursor_chronicle.CursorChatViewer()
+        dialogs = viewer.get_all_dialogs(use_updated=True)
         
         if len(dialogs) > 1:
             for i in range(len(dialogs) - 1):
@@ -226,10 +248,10 @@ class TestListAllDialogs(unittest.TestCase):
                 next_one = dialogs[i + 1].get("last_updated", 0)
                 self.assertLessEqual(current, next_one)
 
-    def test_get_all_dialogs_sorted_by_date_desc(self):
-        """Test that results can be sorted by date descending (newest first)"""
+    def test_get_all_dialogs_sorted_by_updated_desc(self):
+        """Test sorting by last_updated descending with use_updated=True"""
         viewer = cursor_chronicle.CursorChatViewer()
-        dialogs = viewer.get_all_dialogs(sort_desc=True)
+        dialogs = viewer.get_all_dialogs(use_updated=True, sort_desc=True)
         
         if len(dialogs) > 1:
             for i in range(len(dialogs) - 1):

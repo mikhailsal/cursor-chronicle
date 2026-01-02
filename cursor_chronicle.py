@@ -919,16 +919,18 @@ class CursorChatViewer:
         project_filter: Optional[str] = None,
         sort_by: str = "date",
         sort_desc: bool = False,
+        use_updated: bool = False,
     ) -> List[Dict]:
         """
         Get all dialogs across all projects, optionally filtered by time interval.
         
         Args:
-            start_date: Filter dialogs updated after this date (inclusive)
-            end_date: Filter dialogs updated before this date (inclusive)
+            start_date: Filter dialogs after this date (inclusive)
+            end_date: Filter dialogs before this date (inclusive)
             project_filter: Filter by project name (partial match)
             sort_by: Sort field - "date", "name", or "project"
             sort_desc: Sort descending if True, ascending if False (default)
+            use_updated: Use last_updated date instead of created_at for filtering/sorting
         
         Returns:
             List of dialog info dicts with project context
@@ -947,13 +949,16 @@ class CursorChatViewer:
                     continue
 
             for composer in project.get("composers", []):
-                timestamp = composer.get("lastUpdatedAt", 0)
+                last_updated = composer.get("lastUpdatedAt", 0)
                 created_at = composer.get("createdAt", 0)
+                
+                # Choose which date to use for filtering
+                filter_date = last_updated if use_updated else created_at
 
                 # Apply time filters
-                if start_ts and timestamp < start_ts:
+                if start_ts and filter_date < start_ts:
                     continue
-                if end_ts and timestamp > end_ts:
+                if end_ts and filter_date > end_ts:
                     continue
 
                 all_dialogs.append({
@@ -961,7 +966,7 @@ class CursorChatViewer:
                     "name": composer.get("name", "Untitled"),
                     "project_name": project["project_name"],
                     "folder_path": project["folder_path"],
-                    "last_updated": timestamp,
+                    "last_updated": last_updated,
                     "created_at": created_at,
                 })
 
@@ -977,8 +982,10 @@ class CursorChatViewer:
                 reverse=sort_desc
             )
         else:  # date (default)
+            # Use created_at by default, or last_updated if use_updated is True
+            date_field = "last_updated" if use_updated else "created_at"
             all_dialogs.sort(
-                key=lambda x: x.get("last_updated", 0),
+                key=lambda x: x.get(date_field, 0),
                 reverse=sort_desc
             )
         return all_dialogs
@@ -991,20 +998,22 @@ class CursorChatViewer:
         limit: int = 50,
         sort_by: str = "date",
         sort_desc: bool = False,
+        use_updated: bool = False,
     ):
         """
         Display all dialogs across all projects with optional time filtering.
         
         Args:
-            start_date: Filter dialogs updated after this date
-            end_date: Filter dialogs updated before this date
+            start_date: Filter dialogs after this date
+            end_date: Filter dialogs before this date
             project_filter: Filter by project name (partial match)
             limit: Maximum number of dialogs to display
             sort_by: Sort field - "date", "name", or "project"
             sort_desc: Sort descending if True, ascending if False (default)
+            use_updated: Use last_updated date instead of created_at
         """
         dialogs = self.get_all_dialogs(
-            start_date, end_date, project_filter, sort_by, sort_desc
+            start_date, end_date, project_filter, sort_by, sort_desc, use_updated
         )
 
         if not dialogs:
@@ -1169,10 +1178,11 @@ def main():
 Examples:
   %(prog)s --list-projects              # List all projects
   %(prog)s --list-dialogs myproject     # List dialogs in project
-  %(prog)s --list-all                   # List all dialogs (oldest first)
+  %(prog)s --list-all                   # List all dialogs (by creation date, oldest first)
   %(prog)s --list-all --desc            # List all dialogs (newest first)
-  %(prog)s --list-all --from 2024-01-01 # Dialogs after date
-  %(prog)s --list-all --to 2024-12-31   # Dialogs before date
+  %(prog)s --list-all --updated         # Sort/filter by last updated date
+  %(prog)s --list-all --from 2024-01-01 # Dialogs created after date
+  %(prog)s --list-all --from 2024-01-01 --updated  # Dialogs updated after date
   %(prog)s --list-all --sort name       # Sort by dialog name (A-Z)
   %(prog)s --list-all --sort project    # Sort by project name (A-Z)
   %(prog)s --list-all -p myproject      # All dialogs filtered by project
@@ -1222,6 +1232,11 @@ Examples:
         help="Sort descending (newest/Z first). Default is ascending (oldest/A first)",
     )
     parser.add_argument(
+        "--updated",
+        action="store_true",
+        help="Use last updated date instead of creation date for filtering/sorting",
+    )
+    parser.add_argument(
         "--max-output-lines",
         type=int,
         default=1,
@@ -1244,6 +1259,7 @@ Examples:
             limit=args.limit,
             sort_by=args.sort,
             sort_desc=args.desc,
+            use_updated=args.updated,
         )
     else:
         viewer.show_dialog(args.project, args.dialog, args.max_output_lines)
