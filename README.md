@@ -461,6 +461,10 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 
 ## Changelog
 
+### Version 1.3.1
+- **Fix**: Daily activity now shows all days in the specified period
+- **Fix**: `--days` parameter properly controls daily activity display count
+
 ### Version 1.3.0
 - **New**: Usage statistics with `--stats` command
 - **New**: Analyze activity by project, messages, tools, and tokens

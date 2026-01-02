@@ -1294,7 +1294,7 @@ class CursorChatViewer:
         
         return stats
 
-    def format_statistics(self, stats: Dict, top_n: int = 10) -> str:
+    def format_statistics(self, stats: Dict, top_n: int = 10, max_days: int = 30) -> str:
         """Format statistics for display"""
         if stats["total_dialogs"] == 0:
             return "No dialogs found in the specified period."
@@ -1401,21 +1401,21 @@ class CursorChatViewer:
                 output.append(f"     📁 {project_name} | 📝 {msg_count} messages")
             output.append("")
         
-        # Daily activity (last 7 days if many days)
+        # Daily activity (controlled by max_days parameter)
         if stats["daily_activity"]:
             output.append("📅 DAILY ACTIVITY")
             output.append("-" * 40)
             
             sorted_days = sorted(stats["daily_activity"].items(), reverse=True)
-            days_to_show = sorted_days[:7] if len(sorted_days) > 7 else sorted_days
+            days_to_show = sorted_days[:max_days] if len(sorted_days) > max_days else sorted_days
             
             for day, day_stats in days_to_show:
                 bar_len = min(day_stats["messages"] // 2, 30)
                 bar = "█" * bar_len
                 output.append(f"  {day}: {bar} {day_stats['dialogs']}d/{day_stats['messages']}m")
             
-            if len(sorted_days) > 7:
-                output.append(f"  ... {len(sorted_days) - 7} more days")
+            if len(sorted_days) > max_days:
+                output.append(f"  ... {len(sorted_days) - max_days} more days")
             output.append("")
         
         output.append("=" * 70)
@@ -1440,6 +1440,7 @@ class CursorChatViewer:
             top_n: Number of top items to show in rankings
         """
         # Calculate date range
+        # --days controls max daily activity rows displayed
         if not start_date and not end_date:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=days)
@@ -1447,6 +1448,8 @@ class CursorChatViewer:
             end_date = datetime.now()
         elif not start_date:
             start_date = end_date - timedelta(days=days)
+        
+        max_days = days  # --days always controls daily activity display limit
         
         print(f"Collecting statistics... (this may take a moment)")
         
@@ -1456,7 +1459,7 @@ class CursorChatViewer:
             project_filter=project_filter,
         )
         
-        output = self.format_statistics(stats, top_n=top_n)
+        output = self.format_statistics(stats, top_n=top_n, max_days=max_days)
         print(output)
 
 
