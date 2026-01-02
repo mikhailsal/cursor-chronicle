@@ -461,6 +461,9 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 
 ## Changelog
 
+### Version 1.3.2
+- **New**: "Coding days" statistic showing active days vs total period days with percentage
+
 ### Version 1.3.1
 - **Fix**: Daily activity now shows all days in the specified period
 - **Fix**: `--days` parameter properly controls daily activity display count

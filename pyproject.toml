@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cursor-chronicle"
-version = "1.3.1"
+version = "1.3.2"
 description = "Extracts and displays dialogs from Cursor IDE database with support for attached files"
 readme = "README.md"
 license = {file = "LICENSE"}

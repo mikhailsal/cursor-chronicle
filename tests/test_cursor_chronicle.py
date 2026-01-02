@@ -511,6 +511,94 @@ class TestStatisticsFeature(unittest.TestCase):
             self.assertGreaterEqual(result.get("total_tokens_in", 0), 0)
             self.assertGreaterEqual(result.get("total_tokens_out", 0), 0)
 
+    def test_format_statistics_shows_coding_days(self):
+        """Test that format_statistics shows coding days percentage"""
+        from datetime import datetime
+        from collections import Counter
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        # Sample stats with 3 active days out of 10 day period
+        sample_stats = {
+            "period_start": datetime(2024, 1, 1),
+            "period_end": datetime(2024, 1, 10),  # 10 days period
+            "total_dialogs": 5,
+            "total_messages": 100,
+            "user_messages": 30,
+            "ai_messages": 70,
+            "tool_calls": 50,
+            "thinking_bubbles": 0,
+            "total_tokens_in": 0,
+            "total_tokens_out": 0,
+            "total_thinking_time_ms": 0,
+            "projects": {},
+            "tool_usage": Counter(),
+            "daily_activity": {
+                "2024-01-02": {"dialogs": 2, "messages": 40},
+                "2024-01-05": {"dialogs": 1, "messages": 30},
+                "2024-01-08": {"dialogs": 2, "messages": 30},
+            },  # 3 active days
+            "dialogs_by_length": [],
+        }
+        
+        result = viewer.format_statistics(sample_stats)
+        
+        # Should show 3/10 coding days (30%)
+        self.assertIn("Coding days:", result)
+        self.assertIn("3/10", result)
+        self.assertIn("30%", result)
+
+    def test_format_statistics_coding_days_without_dates(self):
+        """Test coding days display when no period dates"""
+        from collections import Counter
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        sample_stats = {
+            "period_start": None,
+            "period_end": None,
+            "total_dialogs": 5,
+            "total_messages": 100,
+            "user_messages": 30,
+            "ai_messages": 70,
+            "tool_calls": 50,
+            "thinking_bubbles": 0,
+            "total_tokens_in": 0,
+            "total_tokens_out": 0,
+            "total_thinking_time_ms": 0,
+            "projects": {},
+            "tool_usage": Counter(),
+            "daily_activity": {
+                "2024-01-02": {"dialogs": 2, "messages": 40},
+                "2024-01-05": {"dialogs": 1, "messages": 30},
+            },
+            "dialogs_by_length": [],
+        }
+        
+        result = viewer.format_statistics(sample_stats)
+        
+        # Should show just the count without percentage
+        self.assertIn("Coding days:", result)
+        self.assertIn("2", result)
+
+    def test_daily_activity_in_stats(self):
+        """Test that daily_activity is properly populated in statistics"""
+        from datetime import datetime, timedelta
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+        
+        result = viewer.get_dialog_statistics(start_date=start_date, end_date=end_date)
+        
+        # daily_activity should be a dict
+        self.assertIn("daily_activity", result)
+        self.assertIsInstance(result["daily_activity"], dict)
+        
+        # If there are dialogs, daily_activity should have entries
+        if result["total_dialogs"] > 0:
+            self.assertGreater(len(result["daily_activity"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

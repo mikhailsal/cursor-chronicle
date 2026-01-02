@@ -1331,6 +1331,16 @@ class CursorChatViewer:
             avg_messages = stats['total_messages'] / stats['total_dialogs']
             output.append(f"  Avg messages/dialog: {avg_messages:.1f}")
         
+        # Coding days statistic
+        active_days = len(stats.get("daily_activity", {}))
+        if stats["period_start"] and stats["period_end"]:
+            total_period_days = (stats["period_end"] - stats["period_start"]).days + 1
+            if total_period_days > 0:
+                coding_percent = (active_days / total_period_days) * 100
+                output.append(f"  📆 Coding days:      {active_days}/{total_period_days} ({coding_percent:.0f}%)")
+        elif active_days > 0:
+            output.append(f"  📆 Coding days:      {active_days}")
+        
         output.append("")
         
         # Token statistics
