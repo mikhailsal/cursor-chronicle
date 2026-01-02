@@ -461,6 +461,9 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 
 ## Changelog
 
+### Version 1.3.3
+- **Fix**: Coding days now correctly calculates month boundaries (--to is exclusive)
+
 ### Version 1.3.2
 - **New**: "Coding days" statistic showing active days vs total period days with percentage
 

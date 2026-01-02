@@ -519,9 +519,10 @@ class TestStatisticsFeature(unittest.TestCase):
         viewer = cursor_chronicle.CursorChatViewer()
         
         # Sample stats with 3 active days out of 10 day period
+        # period_end is exclusive, so Jan 1 to Jan 11 = 10 days
         sample_stats = {
             "period_start": datetime(2024, 1, 1),
-            "period_end": datetime(2024, 1, 10),  # 10 days period
+            "period_end": datetime(2024, 1, 11),  # 10 days period (exclusive end)
             "total_dialogs": 5,
             "total_messages": 100,
             "user_messages": 30,
@@ -598,6 +599,42 @@ class TestStatisticsFeature(unittest.TestCase):
         # If there are dialogs, daily_activity should have entries
         if result["total_dialogs"] > 0:
             self.assertGreater(len(result["daily_activity"]), 0)
+
+    def test_coding_days_month_calculation(self):
+        """Test that coding days correctly calculates month boundaries.
+        
+        Bug fix: --from 2025-05-01 --to 2025-06-01 should show 31 days (May),
+        not 32. The --to date is exclusive.
+        """
+        from datetime import datetime
+        from collections import Counter
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        # May 1 to June 1 (exclusive) = 31 days
+        sample_stats = {
+            "period_start": datetime(2025, 5, 1),
+            "period_end": datetime(2025, 6, 1),
+            "total_dialogs": 10,
+            "total_messages": 100,
+            "user_messages": 30,
+            "ai_messages": 70,
+            "tool_calls": 50,
+            "thinking_bubbles": 0,
+            "total_tokens_in": 0,
+            "total_tokens_out": 0,
+            "total_thinking_time_ms": 0,
+            "projects": {},
+            "tool_usage": Counter(),
+            "daily_activity": {f"2025-05-{i:02d}": {"dialogs": 1, "messages": 5} for i in range(1, 28)},
+            "dialogs_by_length": [],
+        }
+        
+        result = viewer.format_statistics(sample_stats)
+        
+        # Should show 27/31 (May has 31 days, not 32)
+        self.assertIn("27/31", result)
+        self.assertNotIn("/32", result)
 
 
 if __name__ == "__main__":

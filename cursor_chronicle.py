@@ -1334,7 +1334,8 @@ class CursorChatViewer:
         # Coding days statistic
         active_days = len(stats.get("daily_activity", {}))
         if stats["period_start"] and stats["period_end"]:
-            total_period_days = (stats["period_end"] - stats["period_start"]).days + 1
+            # --to date is exclusive, so no +1 needed
+            total_period_days = (stats["period_end"] - stats["period_start"]).days
             if total_period_days > 0:
                 coding_percent = (active_days / total_period_days) * 100
                 output.append(f"  📆 Coding days:      {active_days}/{total_period_days} ({coding_percent:.0f}%)")
