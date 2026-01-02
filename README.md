@@ -7,6 +7,7 @@ A powerful tool for extracting, searching, and displaying dialogs from Cursor ID
 - 📊 **Complete Conversation History**: Extract full chat sessions with AI assistants
 - 🔍 **Full-Text Search**: Search across all chat history for any keyword
 - 📅 **Time-Based Filtering**: List dialogs by date range across all projects
+- 📈 **Usage Statistics**: Analyze activity by project, messages, tools, and tokens
 - 🛠️ **Tool Call Analysis**: Detailed view of tool executions and results
 - 📎 **File Attachment Support**: See all attached files and context
 - 🧠 **AI Thinking Process**: View AI reasoning and thinking duration
@@ -156,6 +157,52 @@ cursor-chronicle --list-all --desc
 | `--updated` | | Use last updated date instead of creation date |
 | `--limit` | | Maximum dialogs to display (default: 50) |
 | `--project` | `-p` | Filter by project name (partial match) |
+
+## Usage Statistics
+
+Get comprehensive statistics about your Cursor IDE usage.
+
+### Statistics Commands
+
+```bash
+# Statistics for last 30 days (default)
+cursor-chronicle --stats
+
+# Statistics for last 7 days
+cursor-chronicle --stats --days 7
+
+# Statistics for specific date range
+cursor-chronicle --stats --from 2024-01-01 --to 2024-01-31
+
+# Statistics for specific project
+cursor-chronicle --stats -p "my-project"
+
+# Show more top items in rankings
+cursor-chronicle --stats --top 20
+```
+
+### Statistics Output
+
+The statistics command displays:
+
+- **Summary**: Total dialogs, messages, user/AI message counts, tool calls
+- **Token Usage**: Input/output token consumption
+- **AI Thinking**: Thinking bubble count and total time
+- **Project Activity**: Ranking of most active projects by message count
+- **Tool Usage**: Most frequently used tools
+- **Longest Dialogs**: Dialogs with most messages
+- **Daily Activity**: Activity distribution over the period
+
+### Statistics Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--stats` | | Show usage statistics |
+| `--days` | | Number of days to analyze (default: 30) |
+| `--from` | | Start date for statistics (YYYY-MM-DD) |
+| `--to` | | End date for statistics (YYYY-MM-DD) |
+| `--project` | `-p` | Filter by project name (partial match) |
+| `--top` | | Number of top items to show (default: 10) |
 
 ## Search History
 
@@ -413,6 +460,13 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 ```
 
 ## Changelog
+
+### Version 1.3.0
+- **New**: Usage statistics with `--stats` command
+- **New**: Analyze activity by project, messages, tools, and tokens
+- **New**: Daily activity visualization
+- **New**: Top tools and longest dialogs rankings
+- **New**: Configurable analysis period with `--days` option
 
 ### Version 1.2.1
 - **Fix**: Sort by creation date by default, add `--updated` option

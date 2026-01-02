@@ -12,9 +12,10 @@ import os
 import signal
 import sqlite3
 import urllib.parse
-from datetime import datetime
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 # Handle broken pipe gracefully
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -1150,6 +1151,314 @@ class CursorChatViewer:
         except Exception as e:
             print(f"Error reading dialog: {e}")
 
+    def get_dialog_statistics(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        project_filter: Optional[str] = None,
+    ) -> Dict:
+        """
+        Collect comprehensive statistics for dialogs in the given period.
+        
+        Args:
+            start_date: Start of period (inclusive)
+            end_date: End of period (inclusive)
+            project_filter: Filter by project name (partial match)
+        
+        Returns:
+            Dict with all statistics data
+        """
+        dialogs = self.get_all_dialogs(
+            start_date=start_date,
+            end_date=end_date,
+            project_filter=project_filter,
+            use_updated=True,
+        )
+        
+        if not dialogs:
+            return {
+                "period_start": start_date,
+                "period_end": end_date,
+                "total_dialogs": 0,
+                "projects": {},
+            }
+        
+        # Initialize statistics containers
+        stats = {
+            "period_start": start_date,
+            "period_end": end_date,
+            "total_dialogs": len(dialogs),
+            "total_messages": 0,
+            "user_messages": 0,
+            "ai_messages": 0,
+            "tool_calls": 0,
+            "thinking_bubbles": 0,
+            "total_tokens_in": 0,
+            "total_tokens_out": 0,
+            "total_thinking_time_ms": 0,
+            "projects": defaultdict(lambda: {
+                "dialogs": 0,
+                "messages": 0,
+                "user_messages": 0,
+                "ai_messages": 0,
+                "tool_calls": 0,
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "dialog_names": [],
+            }),
+            "tool_usage": Counter(),
+            "daily_activity": defaultdict(lambda: {"dialogs": 0, "messages": 0}),
+            "dialogs_by_length": [],  # (dialog_name, project, message_count)
+        }
+        
+        # Process each dialog
+        for dialog in dialogs:
+            composer_id = dialog.get("composer_id")
+            project_name = dialog.get("project_name", "Unknown")
+            dialog_name = dialog.get("name", "Untitled")
+            last_updated = dialog.get("last_updated", 0)
+            
+            # Update project dialog count
+            stats["projects"][project_name]["dialogs"] += 1
+            stats["projects"][project_name]["dialog_names"].append(dialog_name)
+            
+            # Track daily activity
+            if last_updated:
+                day_key = datetime.fromtimestamp(last_updated / 1000).strftime("%Y-%m-%d")
+                stats["daily_activity"][day_key]["dialogs"] += 1
+            
+            # Get messages for this dialog
+            try:
+                messages = self.get_dialog_messages(composer_id)
+            except Exception:
+                continue
+            
+            dialog_message_count = 0
+            
+            for msg in messages:
+                msg_type = msg.get("type")
+                tool_data = msg.get("tool_data")
+                is_thought = msg.get("is_thought", False)
+                token_count = msg.get("token_count", {})
+                thinking_duration = msg.get("thinking_duration", 0)
+                
+                # Count message types
+                if msg_type == 1:  # User message
+                    stats["user_messages"] += 1
+                    stats["projects"][project_name]["user_messages"] += 1
+                    dialog_message_count += 1
+                elif msg_type == 2:  # AI message
+                    if is_thought:
+                        stats["thinking_bubbles"] += 1
+                        stats["total_thinking_time_ms"] += thinking_duration
+                    elif msg.get("text"):
+                        stats["ai_messages"] += 1
+                        stats["projects"][project_name]["ai_messages"] += 1
+                        dialog_message_count += 1
+                
+                # Count tool calls
+                if tool_data and tool_data.get("name"):
+                    stats["tool_calls"] += 1
+                    stats["projects"][project_name]["tool_calls"] += 1
+                    tool_name = tool_data.get("name", "unknown")
+                    stats["tool_usage"][tool_name] += 1
+                
+                # Token statistics
+                input_tokens = token_count.get("inputTokens", 0)
+                output_tokens = token_count.get("outputTokens", 0)
+                stats["total_tokens_in"] += input_tokens
+                stats["total_tokens_out"] += output_tokens
+                stats["projects"][project_name]["tokens_in"] += input_tokens
+                stats["projects"][project_name]["tokens_out"] += output_tokens
+            
+            # Update total messages
+            stats["total_messages"] += dialog_message_count
+            stats["projects"][project_name]["messages"] += dialog_message_count
+            
+            # Track daily messages
+            if last_updated:
+                day_key = datetime.fromtimestamp(last_updated / 1000).strftime("%Y-%m-%d")
+                stats["daily_activity"][day_key]["messages"] += dialog_message_count
+            
+            # Track dialog lengths
+            stats["dialogs_by_length"].append(
+                (dialog_name, project_name, dialog_message_count)
+            )
+        
+        # Sort dialogs by length
+        stats["dialogs_by_length"].sort(key=lambda x: x[2], reverse=True)
+        
+        # Convert defaultdicts to regular dicts for cleaner output
+        stats["projects"] = dict(stats["projects"])
+        stats["daily_activity"] = dict(stats["daily_activity"])
+        
+        return stats
+
+    def format_statistics(self, stats: Dict, top_n: int = 10) -> str:
+        """Format statistics for display"""
+        if stats["total_dialogs"] == 0:
+            return "No dialogs found in the specified period."
+        
+        output = []
+        
+        # Header with period info
+        output.append("=" * 70)
+        output.append("📊 CURSOR CHRONICLE - USAGE STATISTICS")
+        output.append("=" * 70)
+        
+        # Period info
+        period_parts = []
+        if stats["period_start"]:
+            period_parts.append(f"From: {stats['period_start'].strftime('%Y-%m-%d')}")
+        if stats["period_end"]:
+            period_parts.append(f"To: {stats['period_end'].strftime('%Y-%m-%d')}")
+        if period_parts:
+            output.append(" | ".join(period_parts))
+        else:
+            output.append("Period: All time")
+        output.append("")
+        
+        # Summary section
+        output.append("📈 SUMMARY")
+        output.append("-" * 40)
+        output.append(f"  Total dialogs:      {stats['total_dialogs']}")
+        output.append(f"  Total messages:     {stats['total_messages']}")
+        output.append(f"    👤 User messages: {stats['user_messages']}")
+        output.append(f"    🤖 AI responses:  {stats['ai_messages']}")
+        output.append(f"    🛠️  Tool calls:    {stats['tool_calls']}")
+        
+        if stats['total_dialogs'] > 0:
+            avg_messages = stats['total_messages'] / stats['total_dialogs']
+            output.append(f"  Avg messages/dialog: {avg_messages:.1f}")
+        
+        output.append("")
+        
+        # Token statistics
+        total_tokens = stats["total_tokens_in"] + stats["total_tokens_out"]
+        if total_tokens > 0:
+            output.append("🔢 TOKEN USAGE")
+            output.append("-" * 40)
+            output.append(f"  Input tokens:  {stats['total_tokens_in']:,}")
+            output.append(f"  Output tokens: {stats['total_tokens_out']:,}")
+            output.append(f"  Total tokens:  {total_tokens:,}")
+            output.append("")
+        
+        # Thinking time
+        if stats["thinking_bubbles"] > 0:
+            total_thinking_sec = stats["total_thinking_time_ms"] / 1000
+            avg_thinking = total_thinking_sec / stats["thinking_bubbles"]
+            output.append("🧠 AI THINKING")
+            output.append("-" * 40)
+            output.append(f"  Thinking bubbles: {stats['thinking_bubbles']}")
+            output.append(f"  Total time:       {total_thinking_sec:.1f}s")
+            output.append(f"  Average time:     {avg_thinking:.1f}s")
+            output.append("")
+        
+        # Project activity ranking
+        if stats["projects"]:
+            output.append("📁 PROJECT ACTIVITY (by messages)")
+            output.append("-" * 40)
+            
+            # Sort projects by message count
+            sorted_projects = sorted(
+                stats["projects"].items(),
+                key=lambda x: x[1]["messages"],
+                reverse=True
+            )
+            
+            for i, (project_name, proj_stats) in enumerate(sorted_projects[:top_n], 1):
+                output.append(f"  {i}. {project_name}")
+                output.append(f"     💬 {proj_stats['dialogs']} dialogs | "
+                            f"📝 {proj_stats['messages']} messages | "
+                            f"🛠️ {proj_stats['tool_calls']} tools")
+                
+                proj_tokens = proj_stats['tokens_in'] + proj_stats['tokens_out']
+                if proj_tokens > 0:
+                    output.append(f"     🔢 {proj_tokens:,} tokens")
+            
+            if len(sorted_projects) > top_n:
+                output.append(f"  ... and {len(sorted_projects) - top_n} more projects")
+            output.append("")
+        
+        # Top tool usage
+        if stats["tool_usage"]:
+            output.append("🛠️ MOST USED TOOLS")
+            output.append("-" * 40)
+            
+            for tool_name, count in stats["tool_usage"].most_common(top_n):
+                output.append(f"  {tool_name}: {count}")
+            output.append("")
+        
+        # Longest dialogs
+        if stats["dialogs_by_length"]:
+            output.append("📏 LONGEST DIALOGS")
+            output.append("-" * 40)
+            
+            for dialog_name, project_name, msg_count in stats["dialogs_by_length"][:5]:
+                # Truncate long names
+                display_name = dialog_name[:40] + "..." if len(dialog_name) > 40 else dialog_name
+                output.append(f"  {display_name}")
+                output.append(f"     📁 {project_name} | 📝 {msg_count} messages")
+            output.append("")
+        
+        # Daily activity (last 7 days if many days)
+        if stats["daily_activity"]:
+            output.append("📅 DAILY ACTIVITY")
+            output.append("-" * 40)
+            
+            sorted_days = sorted(stats["daily_activity"].items(), reverse=True)
+            days_to_show = sorted_days[:7] if len(sorted_days) > 7 else sorted_days
+            
+            for day, day_stats in days_to_show:
+                bar_len = min(day_stats["messages"] // 2, 30)
+                bar = "█" * bar_len
+                output.append(f"  {day}: {bar} {day_stats['dialogs']}d/{day_stats['messages']}m")
+            
+            if len(sorted_days) > 7:
+                output.append(f"  ... {len(sorted_days) - 7} more days")
+            output.append("")
+        
+        output.append("=" * 70)
+        return "\n".join(output)
+
+    def show_statistics(
+        self,
+        days: int = 30,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        project_filter: Optional[str] = None,
+        top_n: int = 10,
+    ):
+        """
+        Display usage statistics for the specified period.
+        
+        Args:
+            days: Number of days to look back (default 30, ignored if dates provided)
+            start_date: Custom start date
+            end_date: Custom end date
+            project_filter: Filter by project name
+            top_n: Number of top items to show in rankings
+        """
+        # Calculate date range
+        if not start_date and not end_date:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+        elif not end_date:
+            end_date = datetime.now()
+        elif not start_date:
+            start_date = end_date - timedelta(days=days)
+        
+        print(f"Collecting statistics... (this may take a moment)")
+        
+        stats = self.get_dialog_statistics(
+            start_date=start_date,
+            end_date=end_date,
+            project_filter=project_filter,
+        )
+        
+        output = self.format_statistics(stats, top_n=top_n)
+        print(output)
+
 
 def parse_date(date_str: str) -> datetime:
     """Parse date string in various formats"""
@@ -1187,6 +1496,10 @@ Examples:
   %(prog)s --list-all --sort project    # Sort by project name (A-Z)
   %(prog)s --list-all -p myproject      # All dialogs filtered by project
   %(prog)s -p myproject -d "my chat"    # Show specific dialog
+  %(prog)s --stats                      # Statistics for last 30 days
+  %(prog)s --stats --days 7             # Statistics for last 7 days
+  %(prog)s --stats --from 2024-01-01    # Statistics from specific date
+  %(prog)s --stats -p myproject         # Statistics for specific project
         """,
     )
     parser.add_argument(
@@ -1242,6 +1555,23 @@ Examples:
         default=1,
         help="Maximum lines to show for tool outputs (default: 1)",
     )
+    parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="Show usage statistics for the period",
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=30,
+        help="Number of days for statistics (default: 30)",
+    )
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=10,
+        help="Number of top items to show in stats rankings (default: 10)",
+    )
 
     args = parser.parse_args()
 
@@ -1260,6 +1590,14 @@ Examples:
             sort_by=args.sort,
             sort_desc=args.desc,
             use_updated=args.updated,
+        )
+    elif args.stats:
+        viewer.show_statistics(
+            days=args.days,
+            start_date=args.start_date,
+            end_date=args.end_date,
+            project_filter=args.project,
+            top_n=args.top,
         )
     else:
         viewer.show_dialog(args.project, args.dialog, args.max_output_lines)

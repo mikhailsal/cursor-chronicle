@@ -339,5 +339,178 @@ class TestParseDateFunction(unittest.TestCase):
             parse_date("invalid-date")
 
 
+class TestStatisticsFeature(unittest.TestCase):
+    """Test the statistics functionality"""
+
+    def test_get_dialog_statistics_method_exists(self):
+        """Test that get_dialog_statistics method exists"""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "get_dialog_statistics"))
+        self.assertTrue(callable(viewer.get_dialog_statistics))
+
+    def test_format_statistics_method_exists(self):
+        """Test that format_statistics method exists"""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "format_statistics"))
+        self.assertTrue(callable(viewer.format_statistics))
+
+    def test_show_statistics_method_exists(self):
+        """Test that show_statistics method exists"""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "show_statistics"))
+        self.assertTrue(callable(viewer.show_statistics))
+
+    def test_get_dialog_statistics_returns_dict(self):
+        """Test that get_dialog_statistics returns a dictionary with date filter"""
+        from datetime import datetime, timedelta
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        # Use date filter to avoid processing all 1700+ dialogs
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=1)
+        result = viewer.get_dialog_statistics(start_date=start_date, end_date=end_date)
+        self.assertIsInstance(result, dict)
+
+    def test_get_dialog_statistics_has_required_keys(self):
+        """Test that statistics dict has required keys"""
+        from datetime import datetime, timedelta
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        # Use date filter to limit scope
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=1)
+        result = viewer.get_dialog_statistics(start_date=start_date, end_date=end_date)
+        
+        required_keys = [
+            "period_start",
+            "period_end",
+            "total_dialogs",
+            "projects",
+        ]
+        
+        for key in required_keys:
+            self.assertIn(key, result)
+
+    def test_get_dialog_statistics_with_date_filter(self):
+        """Test statistics with date filtering"""
+        from datetime import datetime, timedelta
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+        
+        result = viewer.get_dialog_statistics(
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["period_start"], start_date)
+        self.assertEqual(result["period_end"], end_date)
+
+    def test_get_dialog_statistics_with_project_filter(self):
+        """Test statistics with project filtering"""
+        from datetime import datetime, timedelta
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        # Use date filter + project filter to limit scope
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+        
+        # Get all projects first
+        projects = viewer.get_projects()
+        if projects:
+            project_name = projects[0]["project_name"]
+            result = viewer.get_dialog_statistics(
+                start_date=start_date,
+                end_date=end_date,
+                project_filter=project_name
+            )
+            
+            self.assertIsInstance(result, dict)
+            # All projects in stats should match the filter
+            for proj_name in result.get("projects", {}).keys():
+                self.assertIn(project_name.lower(), proj_name.lower())
+
+    def test_format_statistics_empty_stats(self):
+        """Test format_statistics with empty data"""
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        empty_stats = {
+            "period_start": None,
+            "period_end": None,
+            "total_dialogs": 0,
+            "projects": {},
+        }
+        
+        result = viewer.format_statistics(empty_stats)
+        self.assertIn("No dialogs found", result)
+
+    def test_format_statistics_with_data(self):
+        """Test format_statistics with sample data"""
+        viewer = cursor_chronicle.CursorChatViewer()
+        from datetime import datetime
+        from collections import Counter
+        
+        sample_stats = {
+            "period_start": datetime(2024, 1, 1),
+            "period_end": datetime(2024, 1, 31),
+            "total_dialogs": 5,
+            "total_messages": 100,
+            "user_messages": 30,
+            "ai_messages": 70,
+            "tool_calls": 50,
+            "thinking_bubbles": 10,
+            "total_tokens_in": 10000,
+            "total_tokens_out": 5000,
+            "total_thinking_time_ms": 30000,
+            "projects": {
+                "test-project": {
+                    "dialogs": 5,
+                    "messages": 100,
+                    "user_messages": 30,
+                    "ai_messages": 70,
+                    "tool_calls": 50,
+                    "tokens_in": 10000,
+                    "tokens_out": 5000,
+                    "dialog_names": ["Dialog 1", "Dialog 2"],
+                }
+            },
+            "tool_usage": Counter({"read_file": 20, "edit_file": 30}),
+            "daily_activity": {"2024-01-15": {"dialogs": 2, "messages": 40}},
+            "dialogs_by_length": [("Dialog 1", "test-project", 60)],
+        }
+        
+        result = viewer.format_statistics(sample_stats)
+        
+        # Check key sections are present
+        self.assertIn("USAGE STATISTICS", result)
+        self.assertIn("SUMMARY", result)
+        self.assertIn("Total dialogs:", result)
+        self.assertIn("5", result)
+        self.assertIn("PROJECT ACTIVITY", result)
+        self.assertIn("test-project", result)
+
+    def test_statistics_counts_are_non_negative(self):
+        """Test that all counts in statistics are non-negative"""
+        from datetime import datetime, timedelta
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        # Use date filter to limit scope
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=1)
+        result = viewer.get_dialog_statistics(start_date=start_date, end_date=end_date)
+        
+        if result["total_dialogs"] > 0:
+            self.assertGreaterEqual(result.get("total_messages", 0), 0)
+            self.assertGreaterEqual(result.get("user_messages", 0), 0)
+            self.assertGreaterEqual(result.get("ai_messages", 0), 0)
+            self.assertGreaterEqual(result.get("tool_calls", 0), 0)
+            self.assertGreaterEqual(result.get("total_tokens_in", 0), 0)
+            self.assertGreaterEqual(result.get("total_tokens_out", 0), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
