@@ -414,6 +414,10 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 
 ## Changelog
 
+### Version 1.2.1
+- **Fix**: Sort by creation date by default, add `--updated` option
+- **Fix**: Bug where dialogs with `last_updated=0` sorted incorrectly
+
 ### Version 1.2.0
 - **New**: List all dialogs across all projects with `--list-all`
 - **New**: Filter dialogs by time interval with `--from` and `--to`
