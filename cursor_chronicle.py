@@ -912,6 +912,158 @@ class CursorChatViewer:
 
             print()
 
+    def get_all_dialogs(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        project_filter: Optional[str] = None,
+        sort_by: str = "date",
+        sort_desc: bool = False,
+    ) -> List[Dict]:
+        """
+        Get all dialogs across all projects, optionally filtered by time interval.
+        
+        Args:
+            start_date: Filter dialogs updated after this date (inclusive)
+            end_date: Filter dialogs updated before this date (inclusive)
+            project_filter: Filter by project name (partial match)
+            sort_by: Sort field - "date", "name", or "project"
+            sort_desc: Sort descending if True, ascending if False (default)
+        
+        Returns:
+            List of dialog info dicts with project context
+        """
+        projects = self.get_projects()
+        all_dialogs = []
+
+        # Convert dates to milliseconds timestamp if provided
+        start_ts = int(start_date.timestamp() * 1000) if start_date else None
+        end_ts = int(end_date.timestamp() * 1000) if end_date else None
+
+        for project in projects:
+            # Apply project filter
+            if project_filter:
+                if project_filter.lower() not in project["project_name"].lower():
+                    continue
+
+            for composer in project.get("composers", []):
+                timestamp = composer.get("lastUpdatedAt", 0)
+                created_at = composer.get("createdAt", 0)
+
+                # Apply time filters
+                if start_ts and timestamp < start_ts:
+                    continue
+                if end_ts and timestamp > end_ts:
+                    continue
+
+                all_dialogs.append({
+                    "composer_id": composer.get("composerId", "unknown"),
+                    "name": composer.get("name", "Untitled"),
+                    "project_name": project["project_name"],
+                    "folder_path": project["folder_path"],
+                    "last_updated": timestamp,
+                    "created_at": created_at,
+                })
+
+        # Sort by specified field
+        if sort_by == "name":
+            all_dialogs.sort(
+                key=lambda x: x.get("name", "").lower(),
+                reverse=sort_desc
+            )
+        elif sort_by == "project":
+            all_dialogs.sort(
+                key=lambda x: (x.get("project_name", "").lower(), x.get("name", "").lower()),
+                reverse=sort_desc
+            )
+        else:  # date (default)
+            all_dialogs.sort(
+                key=lambda x: x.get("last_updated", 0),
+                reverse=sort_desc
+            )
+        return all_dialogs
+
+    def list_all_dialogs(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        project_filter: Optional[str] = None,
+        limit: int = 50,
+        sort_by: str = "date",
+        sort_desc: bool = False,
+    ):
+        """
+        Display all dialogs across all projects with optional time filtering.
+        
+        Args:
+            start_date: Filter dialogs updated after this date
+            end_date: Filter dialogs updated before this date
+            project_filter: Filter by project name (partial match)
+            limit: Maximum number of dialogs to display
+            sort_by: Sort field - "date", "name", or "project"
+            sort_desc: Sort descending if True, ascending if False (default)
+        """
+        dialogs = self.get_all_dialogs(
+            start_date, end_date, project_filter, sort_by, sort_desc
+        )
+
+        if not dialogs:
+            date_info = ""
+            if start_date or end_date:
+                if start_date and end_date:
+                    date_info = f" between {start_date.strftime('%Y-%m-%d')} and {end_date.strftime('%Y-%m-%d')}"
+                elif start_date:
+                    date_info = f" after {start_date.strftime('%Y-%m-%d')}"
+                else:
+                    date_info = f" before {end_date.strftime('%Y-%m-%d')}"
+            print(f"No dialogs found{date_info}.")
+            return
+
+        # Build header with filter info
+        header_parts = ["All dialogs"]
+        if project_filter:
+            header_parts.append(f"in '{project_filter}'")
+        if start_date or end_date:
+            if start_date and end_date:
+                header_parts.append(
+                    f"from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
+                )
+            elif start_date:
+                header_parts.append(f"after {start_date.strftime('%Y-%m-%d')}")
+            else:
+                header_parts.append(f"before {end_date.strftime('%Y-%m-%d')}")
+
+        print(" ".join(header_parts) + ":")
+        print(f"Found {len(dialogs)} dialog(s)")
+        print("=" * 60)
+
+        displayed = 0
+        for dialog in dialogs:
+            if displayed >= limit:
+                remaining = len(dialogs) - limit
+                print(f"... and {remaining} more dialogs (use --limit to see more)")
+                break
+
+            name = dialog["name"]
+            composer_id = dialog["composer_id"]
+            project_name = dialog["project_name"]
+            timestamp = dialog["last_updated"]
+            created_at = dialog["created_at"]
+
+            print(f"💬 {name}")
+            print(f"   📁 Project: {project_name}")
+            print(f"   🔗 ID: {composer_id}")
+
+            if timestamp:
+                date = datetime.fromtimestamp(timestamp / 1000)
+                print(f"   📅 Updated: {date.strftime('%Y-%m-%d %H:%M')}")
+            if created_at:
+                date = datetime.fromtimestamp(created_at / 1000)
+                print(f"   📅 Created: {date.strftime('%Y-%m-%d %H:%M')}")
+
+            print()
+            displayed += 1
+
     def show_dialog(
         self,
         project_name: Optional[str] = None,
@@ -990,8 +1142,43 @@ class CursorChatViewer:
             print(f"Error reading dialog: {e}")
 
 
+def parse_date(date_str: str) -> datetime:
+    """Parse date string in various formats"""
+    formats = [
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%d.%m.%Y",
+        "%d/%m/%Y",
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    raise argparse.ArgumentTypeError(
+        f"Invalid date format: {date_str}. Use YYYY-MM-DD or similar."
+    )
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Cursor Chronicle")
+    parser = argparse.ArgumentParser(
+        description="Cursor Chronicle - View Cursor IDE chat history",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --list-projects              # List all projects
+  %(prog)s --list-dialogs myproject     # List dialogs in project
+  %(prog)s --list-all                   # List all dialogs (oldest first)
+  %(prog)s --list-all --desc            # List all dialogs (newest first)
+  %(prog)s --list-all --from 2024-01-01 # Dialogs after date
+  %(prog)s --list-all --to 2024-12-31   # Dialogs before date
+  %(prog)s --list-all --sort name       # Sort by dialog name (A-Z)
+  %(prog)s --list-all --sort project    # Sort by project name (A-Z)
+  %(prog)s --list-all -p myproject      # All dialogs filtered by project
+  %(prog)s -p myproject -d "my chat"    # Show specific dialog
+        """,
+    )
     parser.add_argument(
         "--project", "-p", help="Project name (partial match supported)"
     )
@@ -1000,6 +1187,40 @@ def main():
         "--list-projects", action="store_true", help="Show list of projects"
     )
     parser.add_argument("--list-dialogs", help="Show list of dialogs for project")
+    parser.add_argument(
+        "--list-all",
+        action="store_true",
+        help="List all dialogs across all projects",
+    )
+    parser.add_argument(
+        "--from",
+        dest="start_date",
+        type=parse_date,
+        help="Filter dialogs updated after this date (YYYY-MM-DD)",
+    )
+    parser.add_argument(
+        "--to",
+        dest="end_date",
+        type=parse_date,
+        help="Filter dialogs updated before this date (YYYY-MM-DD)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="Maximum dialogs to display (default: 50)",
+    )
+    parser.add_argument(
+        "--sort",
+        choices=["date", "name", "project"],
+        default="date",
+        help="Sort dialogs by: date, name, or project (default: date)",
+    )
+    parser.add_argument(
+        "--desc",
+        action="store_true",
+        help="Sort descending (newest/Z first). Default is ascending (oldest/A first)",
+    )
     parser.add_argument(
         "--max-output-lines",
         type=int,
@@ -1015,6 +1236,15 @@ def main():
         viewer.list_projects()
     elif args.list_dialogs:
         viewer.list_dialogs(args.list_dialogs)
+    elif args.list_all:
+        viewer.list_all_dialogs(
+            start_date=args.start_date,
+            end_date=args.end_date,
+            project_filter=args.project,
+            limit=args.limit,
+            sort_by=args.sort,
+            sort_desc=args.desc,
+        )
     else:
         viewer.show_dialog(args.project, args.dialog, args.max_output_lines)
 

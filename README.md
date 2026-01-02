@@ -6,6 +6,7 @@ A powerful tool for extracting, searching, and displaying dialogs from Cursor ID
 
 - 📊 **Complete Conversation History**: Extract full chat sessions with AI assistants
 - 🔍 **Full-Text Search**: Search across all chat history for any keyword
+- 📅 **Time-Based Filtering**: List dialogs by date range across all projects
 - 🛠️ **Tool Call Analysis**: Detailed view of tool executions and results
 - 📎 **File Attachment Support**: See all attached files and context
 - 🧠 **AI Thinking Process**: View AI reasoning and thinking duration
@@ -58,6 +59,35 @@ cursor-chronicle --project "my-project" --dialog "bug-fix"
 cursor-chronicle --project "my-project" --max-output-lines 10
 ```
 
+### List all dialogs across all projects
+```bash
+cursor-chronicle --list-all
+```
+
+### List dialogs with time filtering
+```bash
+# Dialogs updated after a specific date (oldest first by default)
+cursor-chronicle --list-all --from 2024-01-01
+
+# Dialogs in a date range
+cursor-chronicle --list-all --from 2024-01-01 --to 2024-12-31
+
+# Newest first
+cursor-chronicle --list-all --desc
+```
+
+### Sort dialogs
+```bash
+# Sort by dialog name (A-Z)
+cursor-chronicle --list-all --sort name
+
+# Sort by project name (A-Z)
+cursor-chronicle --list-all --sort project
+
+# Sort by date descending (newest first)
+cursor-chronicle --list-all --sort date --desc
+```
+
 ## Usage Examples
 
 ### Basic Operations
@@ -85,6 +115,43 @@ cursor-chronicle --project "web-app" --dialog "authentication"
 # View conversation with full tool outputs
 cursor-chronicle --project "api" --dialog "refactor" --max-output-lines 20
 ```
+
+### List All Dialogs
+
+```bash
+# List all dialogs across all projects (oldest first)
+cursor-chronicle --list-all
+
+# Filter by project
+cursor-chronicle --list-all --project "my-project"
+
+# Filter by date range
+cursor-chronicle --list-all --from 2024-06-01 --to 2024-12-31
+
+# Sort by name alphabetically
+cursor-chronicle --list-all --sort name
+
+# Sort by project, then by name
+cursor-chronicle --list-all --sort project
+
+# Show more results (default: 50)
+cursor-chronicle --list-all --limit 100
+
+# Newest dialogs first
+cursor-chronicle --list-all --desc
+```
+
+### List All Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--list-all` | | List all dialogs across all projects |
+| `--from` | | Filter dialogs updated after date (YYYY-MM-DD) |
+| `--to` | | Filter dialogs updated before date (YYYY-MM-DD) |
+| `--sort` | | Sort by: date, name, or project (default: date) |
+| `--desc` | | Sort descending (newest/Z first) |
+| `--limit` | | Maximum dialogs to display (default: 50) |
+| `--project` | `-p` | Filter by project name (partial match) |
 
 ## Search History
 
@@ -342,6 +409,13 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 ```
 
 ## Changelog
+
+### Version 1.2.0
+- **New**: List all dialogs across all projects with `--list-all`
+- **New**: Filter dialogs by time interval with `--from` and `--to`
+- **New**: Customizable sorting: by date, name, or project (`--sort`)
+- **New**: Ascending/descending sort order (`--desc`)
+- **New**: Limit results count (`--limit`)
 
 ### Version 1.1.0
 - **New**: Full-text search across all chat history (`search_history.py`)
