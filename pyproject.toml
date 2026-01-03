@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cursor-chronicle"
-version = "1.3.3"
+version = "1.4.0"
 description = "Extracts and displays dialogs from Cursor IDE database with support for attached files"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -36,6 +36,7 @@ Issues = "https://github.com/cursor-chronicle/cursor-chronicle/issues"
 
 [project.scripts]
 cursor-chronicle = "cursor_chronicle:main"
+search-history = "search_history:main"
 
 [project.optional-dependencies]
 dev = [
@@ -45,10 +46,11 @@ dev = [
     "isort>=5.0",
     "flake8>=5.0",
     "mypy>=1.0",
+    "pre-commit>=3.0",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = ["cursor_chronicle", "search_history"]
 
 [tool.black]
 line-length = 88
@@ -94,4 +96,17 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "--cov=cursor_chronicle --cov-report=term-missing --cov-report=html" 
+addopts = "--cov=cursor_chronicle --cov=search_history --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["cursor_chronicle", "search_history"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+] 

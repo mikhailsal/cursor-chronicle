@@ -1,0 +1,15 @@
+repos:
+  - repo: local
+    hooks:
+      - id: check-file-size
+        name: Check file size (max 400 lines)
+        entry: python scripts/check_file_size.py
+        language: python
+        types: [python]
+
+      - id: check-coverage
+        name: Check test coverage (min 95%)
+        entry: python scripts/check_coverage.py
+        language: python
+        pass_filenames: false
+        stages: [pre-push]

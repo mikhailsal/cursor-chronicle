@@ -29,8 +29,9 @@ pip install -e ".[dev]"
 ### Direct Usage
 
 ```bash
-# Run directly without installation
-python cursor_chronicle.py --help
+# Run as module without installation
+python -m cursor_chronicle --help
+python -m search_history --help
 ```
 
 ## Quick Start
@@ -206,29 +207,29 @@ The statistics command displays:
 
 ## Search History
 
-The `search_history.py` script provides full-text search across all Cursor IDE chat history.
+The `search-history` command provides full-text search across all Cursor IDE chat history.
 
 ### Search Commands
 
 ```bash
 # Search for a keyword across all history
-python search_history.py "KiloCode"
+search-history "KiloCode"
 
 # Search with progress output
-python search_history.py "API" --verbose
+search-history "API" --verbose
 
 # Search in specific project only
-python search_history.py "bug" --project "my-project"
+search-history "bug" --project "my-project"
 
 # Case-sensitive search
-python search_history.py "Error" --case-sensitive
+search-history "Error" --case-sensitive
 ```
 
 ### List Matching Dialogs
 
 ```bash
 # Show all dialogs containing the keyword with match counts
-python search_history.py "KiloCode" --list-dialogs
+search-history "KiloCode" --list-dialogs
 ```
 
 Output example:
@@ -248,17 +249,17 @@ Output example:
 
 ```bash
 # Show complete dialog by composer ID (from --list-dialogs output)
-python search_history.py --show-dialog "a001bbfc-219f-4d0d-bd6d-f16af617c994"
+search-history --show-dialog "a001bbfc-219f-4d0d-bd6d-f16af617c994"
 ```
 
 ### Search with Context
 
 ```bash
 # Show surrounding messages for each match
-python search_history.py "error" --show-context
+search-history "error" --show-context
 
 # Customize context size (default: 3 messages)
-python search_history.py "bug" --show-context --context-size 5
+search-history "bug" --show-context --context-size 5
 ```
 
 ### Search Options
@@ -303,8 +304,20 @@ make install
 # Run tests
 make test
 
+# Run tests with coverage
+make test-cov
+
 # Format code
 make format
+
+# Check file sizes (max 400 lines)
+make check-size
+
+# Check test coverage (min 85%)
+make check-coverage
+
+# Install pre-commit hooks
+make pre-commit-install
 
 # Clean build artifacts
 make clean
@@ -313,19 +326,48 @@ make clean
 make help
 ```
 
+### Code Quality Standards
+
+- **File size limit**: 400 lines per Python file (enforced by pre-commit)
+- **Test coverage**: 85% minimum (enforced on pre-push)
+- **Code formatting**: Black + isort (auto-fixed on commit)
+- **Modular architecture**: Split into focused, maintainable modules
+
 ### Project Structure
 
 ```
 cursor-chronicle/
-├── cursor_chronicle.py          # Main application (view dialogs)
-├── search_history.py            # Search across all history
-├── cursor_chronicle.md          # Detailed documentation
-├── cursor_data_structure.md     # Database structure docs
-├── pyproject.toml              # Modern Python project config
-├── tests/                      # Test suite
-├── Makefile                    # Development commands
-├── README.md                   # This file
-└── LICENSE                     # License file
+├── cursor_chronicle/            # Main package (modular)
+│   ├── __init__.py             # Package exports
+│   ├── __main__.py             # Module entry point
+│   ├── viewer.py               # Core viewer logic
+│   ├── messages.py             # Message processing
+│   ├── formatters.py           # Output formatting
+│   ├── statistics.py           # Usage statistics
+│   ├── cli.py                  # Command-line interface
+│   └── utils.py                # Shared utilities
+├── search_history/              # Search package (modular)
+│   ├── __init__.py             # Package exports
+│   ├── __main__.py             # Module entry point
+│   ├── searcher.py             # Core search logic
+│   ├── formatters.py           # Search output formatting
+│   └── cli.py                  # Search CLI
+├── scripts/                     # Development scripts
+│   ├── check_file_size.py      # Pre-commit: file size check
+│   └── check_coverage.py       # Pre-push: coverage check
+├── tests/                       # Test suite (modular)
+│   ├── conftest.py             # Shared fixtures
+│   ├── test_viewer.py          # Viewer tests
+│   ├── test_messages.py        # Message tests
+│   ├── test_formatters.py      # Formatter tests
+│   ├── test_statistics.py      # Statistics tests
+│   ├── test_cli.py             # CLI tests
+│   ├── test_search_*.py        # Search tests
+│   └── test_integration.py     # Integration tests
+├── .pre-commit-config.yaml      # Pre-commit hooks config
+├── pyproject.toml               # Project config
+├── Makefile                     # Development commands
+└── README.md                    # This file
 ```
 
 ## Database Structure
@@ -461,7 +503,15 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 
 ## Changelog
 
-### Version 1.3.3
+### Version 1.4.0
+- **Refactor**: Split monolithic files into modular packages (cursor_chronicle/, search_history/)
+- **Refactor**: Rename `--to` parameter to `--before` for clarity
+- **New**: Pre-commit hooks for file size (400 lines max) and coverage (85% min) checks
+- **New**: `python -m cursor_chronicle` and `python -m search_history` module execution
+- **New**: Development scripts in scripts/ directory
+- **New**: Makefile targets: check-size, check-coverage, pre-commit-install
+- **Improved**: Test suite split into focused modules (test_viewer, test_messages, etc.)
+- **Improved**: Test coverage increased to 87%
 - **Fix**: Coding days now correctly calculates month boundaries (--before is exclusive)
 
 ### Version 1.3.2

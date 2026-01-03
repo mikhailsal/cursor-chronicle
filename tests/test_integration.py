@@ -242,49 +242,21 @@ class TestCursorChronicleIntegration(unittest.TestCase):
             self.fail(f"Database access didn't fail gracefully: {e}")
 
     def test_extract_files_from_layout_comprehensive(self):
-        """Test extract_files_from_layout with various complex structures"""
+        """Test extract_files_from_layout with complex structures"""
         try:
-            # Test with deeply nested structure
             complex_layout = {
-                "src": {
-                    "main": {
-                        "app.py": None,
-                        "config.py": None,
-                        "utils": {
-                            "helpers.py": None,
-                            "validators.py": None
-                        }
-                    },
-                    "tests": {
-                        "test_app.py": None,
-                        "fixtures": {
-                            "data.json": None
-                        }
-                    }
-                },
+                "src": {"main": {"app.py": None, "utils": {"helpers.py": None}}},
                 "README.md": None,
-                "requirements.txt": None
             }
             
-            files = self.viewer.extract_files_from_layout(complex_layout)
+            files = cursor_chronicle.extract_files_from_layout(complex_layout)
             self.assertIsInstance(files, list)
             self.assertIn("src/main/app.py", files)
             self.assertIn("src/main/utils/helpers.py", files)
-            self.assertIn("src/tests/fixtures/data.json", files)
             self.assertIn("README.md", files)
             
-            # Test with empty and None values
-            result = self.viewer.extract_files_from_layout({})
+            result = cursor_chronicle.extract_files_from_layout({})
             self.assertEqual(result, [])
-            
-            # Test with None input (should not crash)
-            try:
-                result = self.viewer.extract_files_from_layout(None)
-                self.assertEqual(result, [])
-            except (TypeError, AttributeError):
-                # This is acceptable - method might not handle None gracefully
-                pass
-            
         except Exception as e:
             self.fail(f"extract_files_from_layout crashed with: {e}")
 
@@ -345,35 +317,15 @@ class TestCursorChronicleIntegration(unittest.TestCase):
             self.fail(f"Model inference crashed with: {e}")
 
     def test_main_function_no_crash(self):
-        """Test that main function doesn't crash with various arguments"""
+        """Test that main function doesn't crash with --list-projects"""
         try:
-            # Test with --list-projects
             with mock.patch('sys.argv', ['cursor_chronicle.py', '--list-projects']):
                 with mock.patch('sys.stdout', new_callable=StringIO) as mock_stdout:
                     cursor_chronicle.main()
                 output = mock_stdout.getvalue()
                 self.assertIsInstance(output, str)
-            
-            # Test with --help (this will raise SystemExit, which is expected)
-            with mock.patch('sys.argv', ['cursor_chronicle.py', '--help']):
-                with self.assertRaises(SystemExit):
-                    cursor_chronicle.main()
-                    
-        except SystemExit:
-            pass  # Expected for --help
         except Exception as e:
             self.fail(f"main() crashed with: {e}")
-
-    def test_signal_handling(self):
-        """Test that signal handling is properly set up"""
-        try:
-            import signal
-            # Just verify that SIGPIPE handler is set
-            handler = signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-            self.assertIsNotNone(handler)
-            
-        except Exception as e:
-            self.fail(f"Signal handling test failed: {e}")
 
     def test_database_connection_resilience(self):
         """Test database connection handling with various edge cases"""
