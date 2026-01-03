@@ -71,7 +71,7 @@ cursor-chronicle --list-all
 cursor-chronicle --list-all --from 2024-01-01
 
 # Dialogs in a date range
-cursor-chronicle --list-all --from 2024-01-01 --to 2024-12-31
+cursor-chronicle --list-all --from 2024-01-01 --before 2025-01-01
 
 # Filter/sort by last updated date instead of creation date
 cursor-chronicle --list-all --from 2024-01-01 --updated
@@ -130,7 +130,7 @@ cursor-chronicle --list-all
 cursor-chronicle --list-all --project "my-project"
 
 # Filter by date range
-cursor-chronicle --list-all --from 2024-06-01 --to 2024-12-31
+cursor-chronicle --list-all --from 2024-06-01 --before 2025-01-01
 
 # Sort by name alphabetically
 cursor-chronicle --list-all --sort name
@@ -151,7 +151,7 @@ cursor-chronicle --list-all --desc
 |--------|-------|-------------|
 | `--list-all` | | List all dialogs across all projects |
 | `--from` | | Filter dialogs after date (YYYY-MM-DD) |
-| `--to` | | Filter dialogs before date (YYYY-MM-DD) |
+| `--before` | | Filter dialogs before date (YYYY-MM-DD, exclusive) |
 | `--sort` | | Sort by: date, name, or project (default: date) |
 | `--desc` | | Sort descending (newest/Z first) |
 | `--updated` | | Use last updated date instead of creation date |
@@ -172,7 +172,7 @@ cursor-chronicle --stats
 cursor-chronicle --stats --days 7
 
 # Statistics for specific date range
-cursor-chronicle --stats --from 2024-01-01 --to 2024-01-31
+cursor-chronicle --stats --from 2024-01-01 --before 2024-02-01
 
 # Statistics for specific project
 cursor-chronicle --stats -p "my-project"
@@ -200,7 +200,7 @@ The statistics command displays:
 | `--stats` | | Show usage statistics |
 | `--days` | | Number of days to analyze (default: 30) |
 | `--from` | | Start date for statistics (YYYY-MM-DD) |
-| `--to` | | End date for statistics (YYYY-MM-DD) |
+| `--before` | | End date for statistics (YYYY-MM-DD, exclusive) |
 | `--project` | `-p` | Filter by project name (partial match) |
 | `--top` | | Number of top items to show (default: 10) |
 
@@ -462,7 +462,7 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 ## Changelog
 
 ### Version 1.3.3
-- **Fix**: Coding days now correctly calculates month boundaries (--to is exclusive)
+- **Fix**: Coding days now correctly calculates month boundaries (--before is exclusive)
 
 ### Version 1.3.2
 - **New**: "Coding days" statistic showing active days vs total period days with percentage

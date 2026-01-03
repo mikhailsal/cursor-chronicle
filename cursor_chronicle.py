@@ -1334,7 +1334,7 @@ class CursorChatViewer:
         # Coding days statistic
         active_days = len(stats.get("daily_activity", {}))
         if stats["period_start"] and stats["period_end"]:
-            # --to date is exclusive, so no +1 needed
+            # --before date is exclusive, so no +1 needed
             total_period_days = (stats["period_end"] - stats["period_start"]).days
             if total_period_days > 0:
                 coding_percent = (active_days / total_period_days) * 100
@@ -1536,10 +1536,11 @@ Examples:
         help="Filter dialogs updated after this date (YYYY-MM-DD)",
     )
     parser.add_argument(
-        "--to",
+        "--before",
+        "--to",  # alias for backwards compatibility
         dest="end_date",
         type=parse_date,
-        help="Filter dialogs updated before this date (YYYY-MM-DD)",
+        help="Filter dialogs before this date (YYYY-MM-DD, exclusive)",
     )
     parser.add_argument(
         "--limit",

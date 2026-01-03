@@ -603,8 +603,8 @@ class TestStatisticsFeature(unittest.TestCase):
     def test_coding_days_month_calculation(self):
         """Test that coding days correctly calculates month boundaries.
         
-        Bug fix: --from 2025-05-01 --to 2025-06-01 should show 31 days (May),
-        not 32. The --to date is exclusive.
+        Bug fix: --from 2025-05-01 --before 2025-06-01 should show 31 days (May),
+        not 32. The --before date is exclusive.
         """
         from datetime import datetime
         from collections import Counter
