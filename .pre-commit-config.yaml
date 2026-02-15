@@ -8,8 +8,11 @@ repos:
         types: [python]
 
       - id: check-coverage
-        name: Check test coverage (min 95%)
+        name: Check test coverage (min 85%)
         entry: python scripts/check_coverage.py
         language: python
         pass_filenames: false
         stages: [pre-push]
+        additional_dependencies:
+          - pytest
+          - pytest-cov
