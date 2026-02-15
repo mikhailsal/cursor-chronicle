@@ -3,6 +3,27 @@ Cursor Chronicle - Extract and display Cursor IDE chat history.
 """
 
 from .cli import main, parse_date
+from .config import (
+    VERBOSITY_COMPACT,
+    VERBOSITY_FULL,
+    VERBOSITY_STANDARD,
+    ensure_config_exists,
+    get_config_path,
+    get_export_path,
+    get_verbosity,
+    load_config,
+    save_config,
+)
+from .exporter import (
+    build_folder_path,
+    build_md_filename,
+    export_dialogs,
+    format_dialog_md,
+    format_message_md,
+    sanitize_filename,
+    sanitize_project_name,
+    show_export_summary,
+)
 from .formatters import (
     format_attached_files,
     format_dialog,
@@ -25,6 +46,25 @@ __all__ = [
     # CLI
     "main",
     "parse_date",
+    # Config
+    "load_config",
+    "save_config",
+    "ensure_config_exists",
+    "get_config_path",
+    "get_export_path",
+    "get_verbosity",
+    "VERBOSITY_COMPACT",
+    "VERBOSITY_STANDARD",
+    "VERBOSITY_FULL",
+    # Exporter
+    "export_dialogs",
+    "format_dialog_md",
+    "format_message_md",
+    "build_md_filename",
+    "build_folder_path",
+    "sanitize_filename",
+    "sanitize_project_name",
+    "show_export_summary",
     # Messages
     "get_dialog_messages",
     "extract_attached_files",
@@ -44,4 +84,4 @@ __all__ = [
     "TOOL_TYPES",
 ]
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"

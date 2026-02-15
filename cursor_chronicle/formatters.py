@@ -97,30 +97,42 @@ def format_tool_call(tool_data: Dict, max_output_lines: int = 1) -> str:
     raw_args = tool_data.get("rawArgs")
     if raw_args:
         try:
-            args = json.loads(raw_args)
-            output.append("   Parameters:")
-            for key, value in args.items():
-                if isinstance(value, str) and key == "explanation":
-                    pass
-                elif tool_name in ["edit_file", "search_replace"] and key == "code_edit":
-                    value_lines = value.splitlines()
-                    if len(value_lines) > max_output_lines:
-                        value = "\n".join(value_lines[:max_output_lines]) + f"... ({len(value_lines) - max_output_lines} more lines)"
+            if isinstance(raw_args, dict):
+                args = raw_args
+            elif isinstance(raw_args, str):
+                args = json.loads(raw_args)
+            else:
+                args = None
+            if args and isinstance(args, dict):
+                output.append("   Parameters:")
+                for key, value in args.items():
+                    if isinstance(value, str) and key == "explanation":
+                        pass
+                    elif tool_name in ["edit_file", "search_replace"] and key == "code_edit":
+                        value_lines = value.splitlines()
+                        if len(value_lines) > max_output_lines:
+                            value = "\n".join(value_lines[:max_output_lines]) + f"... ({len(value_lines) - max_output_lines} more lines)"
+                        output.append(f"     {key}: {value}")
+                        continue
+                    elif isinstance(value, str) and len(value) > 70:
+                        value = value[:70] + "..."
                     output.append(f"     {key}: {value}")
-                    continue
-                elif isinstance(value, str) and len(value) > 70:
-                    value = value[:70] + "..."
-                output.append(f"     {key}: {value}")
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             pass
 
     result = tool_data.get("result")
     if result:
         try:
-            result_data = json.loads(result)
-            output.append("   Result:")
-            output.extend(_format_tool_result(tool_name, result_data, max_output_lines))
-        except json.JSONDecodeError:
+            if isinstance(result, (dict, list)):
+                result_data = result
+            elif isinstance(result, str):
+                result_data = json.loads(result)
+            else:
+                result_data = None
+            if result_data is not None:
+                output.append("   Result:")
+                output.extend(_format_tool_result(tool_name, result_data, max_output_lines))
+        except (json.JSONDecodeError, TypeError):
             pass
 
     return "\n".join(output)

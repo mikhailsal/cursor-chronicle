@@ -8,6 +8,7 @@ A powerful tool for extracting, searching, and displaying dialogs from Cursor ID
 - 🔍 **Full-Text Search**: Search across all chat history for any keyword
 - 📅 **Time-Based Filtering**: List dialogs by date range across all projects
 - 📈 **Usage Statistics**: Analyze activity by project, messages, tools, and tokens
+- 📤 **Markdown Export**: Export dialogs to `.md` files organized by project and date
 - 🛠️ **Tool Call Analysis**: Detailed view of tool executions and results
 - 📎 **File Attachment Support**: See all attached files and context
 - 🧠 **AI Thinking Process**: View AI reasoning and thinking duration
@@ -205,6 +206,90 @@ The statistics command displays:
 | `--project` | `-p` | Filter by project name (partial match) |
 | `--top` | | Number of top items to show (default: 10) |
 
+## Export to Markdown
+
+Export your dialog history to Markdown files for easy browsing, searching, and integration with tools like Obsidian.
+
+### Export Commands
+
+```bash
+# Export all dialogs to Markdown files
+cursor-chronicle --export
+
+# Export dialogs from a specific project
+cursor-chronicle --export -p "my-project"
+
+# Export with date filtering
+cursor-chronicle --export --from 2024-01-01 --before 2024-07-01
+
+# Export with custom verbosity level
+cursor-chronicle --export --verbosity 3
+
+# Export to a custom directory
+cursor-chronicle --export --export-path /path/to/my/obsidian/vault
+
+# Show current configuration
+cursor-chronicle --show-config
+```
+
+### Folder Structure
+
+Exported files are organized by project and month:
+
+```
+<export_path>/
+├── my-project/
+│   ├── 2024-06/
+│   │   ├── 2024-06-12_14-31_How_to_implement_logging.md
+│   │   └── 2024-06-15_09-22_Bug_fix_discussion.md
+│   └── 2024-07/
+│       └── 2024-07-01_10-00_New_feature_planning.md
+├── another-project/
+│   └── 2024-06/
+│       └── 2024-06-20_16-45_API_refactoring.md
+└── ...
+```
+
+**Note**: Dialogs are placed in folders based on their **creation date**, not last updated date. If you continue an old dialog months later, it stays in its original month folder.
+
+### Verbosity Levels
+
+Control how much detail is included in exported files:
+
+| Level | Name | Description |
+|-------|------|-------------|
+| 1 | compact | User/AI text only, tool names as one-line summaries |
+| 2 | standard | Includes tool parameters, attached files, token counts (default) |
+| 3 | full | Complete output: tool results, full thinking content, file contents |
+
+### Configuration
+
+Export settings are stored in `~/.cursor-chronicle/config.json`:
+
+```json
+{
+  "export_path": "/tmp/cursor-chronicle-export",
+  "verbosity": 2
+}
+```
+
+- **export_path**: Default directory for exported files (default: `/tmp/cursor-chronicle-export`)
+- **verbosity**: Default verbosity level 1-3 (default: 2)
+
+You can override these settings via command-line arguments (`--export-path`, `--verbosity`).
+
+### Export Options
+
+| Option | Description |
+|--------|-------------|
+| `--export` | Export dialogs to Markdown files |
+| `--export-path` | Override export directory |
+| `--verbosity` | Verbosity level: 1=compact, 2=standard, 3=full |
+| `--project` / `-p` | Filter by project name (partial match) |
+| `--from` | Export dialogs created after date (YYYY-MM-DD) |
+| `--before` | Export dialogs created before date (YYYY-MM-DD) |
+| `--show-config` | Display current configuration |
+
 ## Search History
 
 The `search-history` command provides full-text search across all Cursor IDE chat history.
@@ -344,6 +429,8 @@ cursor-chronicle/
 │   ├── messages.py             # Message processing
 │   ├── formatters.py           # Output formatting
 │   ├── statistics.py           # Usage statistics
+│   ├── exporter.py             # Markdown export engine
+│   ├── config.py               # Configuration management
 │   ├── cli.py                  # Command-line interface
 │   └── utils.py                # Shared utilities
 ├── search_history/              # Search package (modular)
@@ -361,6 +448,8 @@ cursor-chronicle/
 │   ├── test_messages.py        # Message tests
 │   ├── test_formatters.py      # Formatter tests
 │   ├── test_statistics.py      # Statistics tests
+│   ├── test_exporter.py        # Export tests
+│   ├── test_config.py          # Config tests
 │   ├── test_cli.py             # CLI tests
 │   ├── test_search_*.py        # Search tests
 │   └── test_integration.py     # Integration tests
@@ -502,6 +591,16 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 ```
 
 ## Changelog
+
+### Version 1.5.0
+- **New**: Export dialogs to Markdown files with `--export` command
+- **New**: Configurable export path and verbosity via `~/.cursor-chronicle/config.json`
+- **New**: Organized folder structure: `<project>/<YYYY-MM>/<date_time_title>.md`
+- **New**: Three verbosity levels for export: compact (1), standard (2), full (3)
+- **New**: `--show-config` command to display current configuration
+- **New**: `config.py` module for configuration management
+- **New**: `exporter.py` module for Markdown export engine
+- **Improved**: Test coverage with 65 new tests for export functionality
 
 ### Version 1.4.0
 - **Refactor**: Split monolithic files into modular packages (cursor_chronicle/, search_history/)

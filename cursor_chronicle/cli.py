@@ -3,9 +3,13 @@ Command-line interface for Cursor Chronicle.
 """
 
 import argparse
+import sys
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from typing import Dict, Optional
 
+from .config import ensure_config_exists, load_config
+from .exporter import export_dialogs, show_export_summary
 from .formatters import format_dialog
 from .messages import get_dialog_messages
 from .statistics import show_statistics
@@ -115,6 +119,11 @@ Examples:
   %(prog)s --stats --days 7             # Statistics for last 7 days
   %(prog)s --stats --from 2024-01-01    # Statistics from specific date
   %(prog)s --stats -p myproject         # Statistics for specific project
+  %(prog)s --export                     # Export all dialogs to Markdown
+  %(prog)s --export -p myproject        # Export only specific project
+  %(prog)s --export --verbosity 3       # Export with full verbosity
+  %(prog)s --export --export-path /path # Export to specific directory
+  %(prog)s --show-config                # Show current configuration
         """,
     )
 
@@ -134,7 +143,80 @@ Examples:
     parser.add_argument("--days", type=int, default=30, help="Days for statistics (default: 30)")
     parser.add_argument("--top", type=int, default=10, help="Top items in rankings (default: 10)")
 
+    # Export arguments
+    parser.add_argument("--export", action="store_true", help="Export dialogs to Markdown files")
+    parser.add_argument(
+        "--export-path", type=str, default=None,
+        help="Override export directory (default: from config)"
+    )
+    parser.add_argument(
+        "--verbosity", type=int, choices=[1, 2, 3], default=None,
+        help="Export verbosity: 1=compact, 2=standard, 3=full (default: from config)"
+    )
+    parser.add_argument(
+        "--show-config", action="store_true",
+        help="Show current configuration"
+    )
+
     return parser
+
+
+def _show_config():
+    """Display current configuration."""
+    config = ensure_config_exists()
+    print("Current Cursor Chronicle configuration:")
+    print("=" * 50)
+    print(f"  Config file:  {load_config.__module__}")
+    from .config import get_config_path
+    print(f"  Config path:  {get_config_path()}")
+    print(f"  Export path:  {config.get('export_path', 'not set')}")
+    verbosity = config.get('verbosity', 2)
+    verbosity_labels = {1: "compact", 2: "standard", 3: "full"}
+    print(f"  Verbosity:    {verbosity} ({verbosity_labels.get(verbosity, 'unknown')})")
+    print("=" * 50)
+
+
+def _print_export_progress(info: Dict) -> None:
+    """Print export progress inline (overwrites current line)."""
+    percent = info["percent"]
+    current = info["current"]
+    total = info["total"]
+    project = info["project_name"]
+    status_icon = {"exported": "✅", "skipped": "⏭️", "error": "❌"}.get(info["status"], "•")
+
+    # Truncate project name to keep line short
+    if len(project) > 30:
+        project = project[:27] + "..."
+
+    line = f"\r  [{percent:3d}%] {current}/{total}  {status_icon}  {project}"
+    sys.stdout.write(f"{line:<72}")
+    sys.stdout.flush()
+
+    if current == total:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+
+def _run_export(args, viewer: CursorChatViewer):
+    """Run the export command."""
+    export_path = Path(args.export_path) if args.export_path else None
+    verbosity = args.verbosity
+
+    print("Exporting dialogs to Markdown...")
+    print()
+
+    stats = export_dialogs(
+        viewer=viewer,
+        export_path=export_path,
+        verbosity=verbosity,
+        project_filter=args.project,
+        start_date=args.start_date,
+        end_date=args.end_date,
+        progress_callback=_print_export_progress,
+    )
+
+    summary = show_export_summary(stats)
+    print(summary)
 
 
 def main():
@@ -167,6 +249,10 @@ def main():
             project_filter=args.project,
             top_n=args.top,
         )
+    elif args.show_config:
+        _show_config()
+    elif args.export:
+        _run_export(args, viewer)
     else:
         show_dialog(viewer, args.project, args.dialog, args.max_output_lines)
 

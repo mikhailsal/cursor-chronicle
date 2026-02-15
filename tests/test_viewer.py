@@ -241,5 +241,156 @@ class TestListAllDialogsDisplay(unittest.TestCase):
         self.assertIn("before", output)
 
 
+class TestListAllDialogsWithData(unittest.TestCase):
+    """Test list_all_dialogs with actual data."""
+
+    def test_list_all_dialogs_with_limit(self):
+        """Test list_all_dialogs respects limit."""
+        from io import StringIO
+        import sys as sys_module
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        captured = StringIO()
+        sys_module.stdout = captured
+        try:
+            viewer.list_all_dialogs(limit=2)
+        finally:
+            sys_module.stdout = sys_module.__stdout__
+        
+        output = captured.getvalue()
+        # Should either have "more dialogs" or show limited results
+        if "All dialogs" in output:
+            # Has dialogs, check limit works
+            dialog_count = output.count("💬")
+            self.assertLessEqual(dialog_count, 2)
+
+    def test_list_all_dialogs_with_project_filter(self):
+        """Test list_all_dialogs with project filter."""
+        from io import StringIO
+        import sys as sys_module
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        captured = StringIO()
+        sys_module.stdout = captured
+        try:
+            viewer.list_all_dialogs(project_filter="cursor-chronicle", limit=5)
+        finally:
+            sys_module.stdout = sys_module.__stdout__
+        
+        output = captured.getvalue()
+        # Should show filtered results or no dialogs
+        self.assertTrue(
+            "cursor-chronicle" in output.lower() or "No dialogs found" in output
+        )
+
+
+class TestListProjects(unittest.TestCase):
+    """Test list_projects method."""
+
+    def test_list_projects_output(self):
+        """Test list_projects produces output."""
+        from io import StringIO
+        import sys as sys_module
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        captured = StringIO()
+        sys_module.stdout = captured
+        try:
+            viewer.list_projects()
+        finally:
+            sys_module.stdout = sys_module.__stdout__
+        
+        output = captured.getvalue()
+        # Should have "Available projects" or "No projects found"
+        self.assertTrue(
+            "Available projects" in output or "No projects found" in output
+        )
+
+
+class TestListDialogs(unittest.TestCase):
+    """Test list_dialogs method."""
+
+    def test_list_dialogs_project_not_found(self):
+        """Test list_dialogs with nonexistent project."""
+        from io import StringIO
+        import sys as sys_module
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        
+        captured = StringIO()
+        sys_module.stdout = captured
+        try:
+            viewer.list_dialogs("nonexistent-project-xyz-12345")
+        finally:
+            sys_module.stdout = sys_module.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("not found", output)
+
+    def test_list_dialogs_with_valid_project(self):
+        """Test list_dialogs with a valid project."""
+        from io import StringIO
+        import sys as sys_module
+        
+        viewer = cursor_chronicle.CursorChatViewer()
+        projects = viewer.get_projects()
+        
+        if projects:
+            project_name = projects[0]["project_name"]
+            
+            captured = StringIO()
+            sys_module.stdout = captured
+            try:
+                viewer.list_dialogs(project_name)
+            finally:
+                sys_module.stdout = sys_module.__stdout__
+            
+            output = captured.getvalue()
+            # Should show dialogs or "No dialogs found"
+            self.assertTrue(
+                "Dialogs in project" in output or "No dialogs found" in output
+            )
+
+
+class TestViewerMethods(unittest.TestCase):
+    """Test various viewer methods."""
+
+    def test_get_dialog_messages_method_exists(self):
+        """Test that get_dialog_messages method exists."""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "get_dialog_messages"))
+
+    def test_format_attached_files_method_exists(self):
+        """Test that format_attached_files method exists."""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "format_attached_files"))
+        result = viewer.format_attached_files([], 1)
+        self.assertEqual(result, "")
+
+    def test_format_tool_call_method_exists(self):
+        """Test that format_tool_call method exists."""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "format_tool_call"))
+        result = viewer.format_tool_call({}, 1)
+        self.assertEqual(result, "")
+
+    def test_format_token_info_method_exists(self):
+        """Test that format_token_info method exists."""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "format_token_info"))
+        result = viewer.format_token_info({})
+        self.assertEqual(result, "")
+
+    def test_infer_model_from_context_method_exists(self):
+        """Test that infer_model_from_context method exists."""
+        viewer = cursor_chronicle.CursorChatViewer()
+        self.assertTrue(hasattr(viewer, "infer_model_from_context"))
+        result = viewer.infer_model_from_context({}, 100)
+        self.assertIsInstance(result, str)
+
+
 if __name__ == "__main__":
     unittest.main()

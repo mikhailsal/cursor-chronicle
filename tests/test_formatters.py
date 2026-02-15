@@ -181,6 +181,69 @@ class TestFormatToolCall(unittest.TestCase):
         self.assertIn("+new", result2)
 
 
+class TestFormatToolCallDictTypes(unittest.TestCase):
+    """Test format_tool_call with dict-typed rawArgs and result (not JSON strings)."""
+
+    def test_dict_raw_args(self):
+        """Test tool call when rawArgs is already a dict."""
+        tool_data = {
+            "tool": 5,
+            "name": "read_file",
+            "status": "completed",
+            "rawArgs": {"path": "/path/to/file.py"},  # dict, not JSON string
+        }
+        result = cursor_chronicle.format_tool_call(tool_data, 1)
+        self.assertIn("path", result)
+        self.assertIn("/path/to/file.py", result)
+
+    def test_dict_result(self):
+        """Test tool call when result is already a dict."""
+        tool_data = {
+            "tool": 5,
+            "name": "read_file",
+            "status": "completed",
+            "result": {"contents": "hello world", "file": "/test.py"},  # dict, not JSON string
+        }
+        result = cursor_chronicle.format_tool_call(tool_data, 5)
+        self.assertIn("Result", result)
+        self.assertIn("hello world", result)
+
+    def test_list_result(self):
+        """Test tool call when result is a list."""
+        tool_data = {
+            "tool": 5,
+            "name": "some_tool",
+            "status": "completed",
+            "result": [{"file": "a.py"}, {"file": "b.py"}],  # list, not JSON string
+        }
+        result = cursor_chronicle.format_tool_call(tool_data, 5)
+        self.assertIn("Result", result)
+
+    def test_unexpected_rawargs_type(self):
+        """Test tool call when rawArgs is an unexpected type (e.g., int)."""
+        tool_data = {
+            "tool": 5,
+            "name": "some_tool",
+            "status": "completed",
+            "rawArgs": 12345,  # unexpected type
+        }
+        # Should not crash
+        result = cursor_chronicle.format_tool_call(tool_data, 1)
+        self.assertIn("some_tool", result)
+
+    def test_unexpected_result_type(self):
+        """Test tool call when result is an unexpected type (e.g., int)."""
+        tool_data = {
+            "tool": 5,
+            "name": "some_tool",
+            "status": "completed",
+            "result": 99999,  # unexpected type
+        }
+        # Should not crash
+        result = cursor_chronicle.format_tool_call(tool_data, 1)
+        self.assertIn("some_tool", result)
+
+
 class TestFormatTokenInfo(unittest.TestCase):
     """Test format_token_info function."""
 
