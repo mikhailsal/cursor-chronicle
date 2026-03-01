@@ -10,7 +10,13 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import cursor_chronicle
-from cursor_chronicle.cli import _run_export, _show_config, create_parser, show_dialog
+from cursor_chronicle.cli import (
+    _run_export,
+    _show_config,
+    create_parser,
+    parse_positive_int,
+    show_dialog,
+)
 
 
 class TestParseDateFunction(unittest.TestCase):
@@ -82,13 +88,38 @@ class TestCreateParser(unittest.TestCase):
         self.assertFalse(args.desc)
         self.assertFalse(args.updated)
 
+    def test_limit_must_be_positive(self):
+        with self.assertRaises(SystemExit):
+            create_parser().parse_args(["--limit", "0"])
+
+    def test_days_must_be_positive(self):
+        with self.assertRaises(SystemExit):
+            create_parser().parse_args(["--days", "-1"])
+
+    def test_max_output_lines_must_be_positive(self):
+        with self.assertRaises(SystemExit):
+            create_parser().parse_args(["--max-output-lines", "0"])
+
+
+class TestParsePositiveIntFunction(unittest.TestCase):
+    """Test positive integer parser helper."""
+
+    def test_valid_value(self):
+        self.assertEqual(parse_positive_int("5"), 5)
+
+    def test_invalid_zero(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            parse_positive_int("0")
+
 
 class TestShowConfig(unittest.TestCase):
     """Test _show_config function."""
 
+    @patch("cursor_chronicle.config.get_config_path")
     @patch("cursor_chronicle.cli.ensure_config_exists")
-    def test_output(self, mock_ensure):
+    def test_output(self, mock_ensure, mock_config_path):
         mock_ensure.return_value = {"export_path": "/test/path", "verbosity": 2}
+        mock_config_path.return_value = Path("/tmp/.cursor-chronicle/config.json")
         captured = StringIO()
         sys.stdout = captured
         try:
@@ -97,6 +128,7 @@ class TestShowConfig(unittest.TestCase):
             sys.stdout = sys.__stdout__
         output = captured.getvalue()
         self.assertIn("configuration", output.lower())
+        self.assertIn("/tmp/.cursor-chronicle/config.json", output)
         self.assertIn("/test/path", output)
         self.assertIn("standard", output)
 

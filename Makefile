@@ -1,4 +1,4 @@
-.PHONY: help install test format clean check-size check-coverage pre-commit-install
+.PHONY: help install test tests format clean check-size check-coverage pre-commit-install
 
 help:  ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-20s %s\n", $$1, $$2}'
@@ -8,6 +8,8 @@ install:  ## Install package in development mode
 
 test:  ## Run tests
 	python -m pytest tests/ -v
+
+tests: test  ## Backward-compatible alias for full test suite
 
 test-integration:  ## Run integration tests only
 	python -m pytest tests/test_integration.py -v

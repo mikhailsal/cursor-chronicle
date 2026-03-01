@@ -9,6 +9,18 @@ from .formatters import format_full_dialog, format_search_results
 from .searcher import CursorHistorySearch
 
 
+def parse_positive_int(value: str) -> int:
+    """Parse and validate a positive integer value."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(f"Invalid integer value: {value}") from exc
+
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("Value must be a positive integer")
+    return parsed
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure argument parser."""
     parser = argparse.ArgumentParser(
@@ -27,9 +39,20 @@ Examples:
     parser.add_argument("query", nargs="?", help="Search query")
     parser.add_argument("--project", "-p", help="Filter by project name")
     parser.add_argument("--case-sensitive", "-c", action="store_true", help="Case sensitive")
-    parser.add_argument("--limit", "-l", type=int, default=50, help="Max results (default: 50)")
+    parser.add_argument(
+        "--limit",
+        "-l",
+        type=parse_positive_int,
+        default=50,
+        help="Max results (default: 50)",
+    )
     parser.add_argument("--show-context", "-x", action="store_true", help="Show surrounding messages")
-    parser.add_argument("--context-size", type=int, default=3, help="Context messages (default: 3)")
+    parser.add_argument(
+        "--context-size",
+        type=parse_positive_int,
+        default=3,
+        help="Context messages (default: 3)",
+    )
     parser.add_argument("--show-dialog", "-d", metavar="COMPOSER_ID", help="Show full dialog")
     parser.add_argument("--list-dialogs", action="store_true", help="List dialogs with match counts")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show progress")

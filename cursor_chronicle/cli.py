@@ -35,6 +35,18 @@ def parse_date(date_str: str) -> datetime:
     )
 
 
+def parse_positive_int(value: str) -> int:
+    """Parse and validate a positive integer value."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(f"Invalid integer value: {value}") from exc
+
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("Value must be a positive integer")
+    return parsed
+
+
 def show_dialog(
     viewer: CursorChatViewer,
     project_name: Optional[str] = None,
@@ -134,14 +146,34 @@ Examples:
     parser.add_argument("--list-all", action="store_true", help="List all dialogs")
     parser.add_argument("--from", dest="start_date", type=parse_date, help="Filter after date")
     parser.add_argument("--before", "--to", dest="end_date", type=parse_date, help="Filter before date")
-    parser.add_argument("--limit", type=int, default=50, help="Maximum dialogs (default: 50)")
+    parser.add_argument(
+        "--limit",
+        type=parse_positive_int,
+        default=50,
+        help="Maximum dialogs (default: 50)",
+    )
     parser.add_argument("--sort", choices=["date", "name", "project"], default="date", help="Sort by")
     parser.add_argument("--desc", action="store_true", help="Sort descending")
     parser.add_argument("--updated", action="store_true", help="Use last updated date")
-    parser.add_argument("--max-output-lines", type=int, default=1, help="Max lines for tool outputs")
+    parser.add_argument(
+        "--max-output-lines",
+        type=parse_positive_int,
+        default=1,
+        help="Max lines for tool outputs",
+    )
     parser.add_argument("--stats", action="store_true", help="Show usage statistics")
-    parser.add_argument("--days", type=int, default=30, help="Days for statistics (default: 30)")
-    parser.add_argument("--top", type=int, default=10, help="Top items in rankings (default: 10)")
+    parser.add_argument(
+        "--days",
+        type=parse_positive_int,
+        default=30,
+        help="Days for statistics (default: 30)",
+    )
+    parser.add_argument(
+        "--top",
+        type=parse_positive_int,
+        default=10,
+        help="Top items in rankings (default: 10)",
+    )
 
     # Export arguments
     parser.add_argument("--export", action="store_true", help="Export dialogs to Markdown files")
@@ -164,10 +196,10 @@ Examples:
 def _show_config():
     """Display current configuration."""
     config = ensure_config_exists()
+    from .config import get_config_path
+
     print("Current Cursor Chronicle configuration:")
     print("=" * 50)
-    print(f"  Config file:  {load_config.__module__}")
-    from .config import get_config_path
     print(f"  Config path:  {get_config_path()}")
     print(f"  Export path:  {config.get('export_path', 'not set')}")
     verbosity = config.get('verbosity', 2)

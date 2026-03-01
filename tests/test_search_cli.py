@@ -11,6 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import search_history
+from search_history.cli import create_parser, parse_positive_int
 
 
 class TestMainCLI(unittest.TestCase):
@@ -42,6 +43,21 @@ class TestMainCLI(unittest.TestCase):
                 search_history.main()
         output = captured.getvalue()
         self.assertTrue("Dialogs containing" in output or "No results" in output)
+
+
+class TestSearchParserValidation(unittest.TestCase):
+    """Test CLI numeric validation for search command."""
+
+    def test_limit_must_be_positive(self):
+        with self.assertRaises(SystemExit):
+            create_parser().parse_args(["query", "--limit", "0"])
+
+    def test_context_size_must_be_positive(self):
+        with self.assertRaises(SystemExit):
+            create_parser().parse_args(["query", "--context-size", "-2"])
+
+    def test_parse_positive_int_valid(self):
+        self.assertEqual(parse_positive_int("3"), 3)
 
 
 if __name__ == "__main__":
