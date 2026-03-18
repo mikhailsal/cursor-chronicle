@@ -24,10 +24,14 @@ VERBOSITY_FULL = 3      # Full: complete tool outputs, file contents, thinking
 # Default export path (temporary directory for initial testing)
 DEFAULT_EXPORT_PATH = Path(tempfile.gettempdir()) / "cursor-chronicle-export"
 
+# Default backup path
+DEFAULT_BACKUP_PATH = DEFAULT_CONFIG_DIR / "backups"
+
 # Default configuration values
 DEFAULT_CONFIG = {
     "export_path": str(DEFAULT_EXPORT_PATH),
     "verbosity": VERBOSITY_STANDARD,
+    "backup_path": str(DEFAULT_BACKUP_PATH),
 }
 
 
@@ -124,6 +128,22 @@ def get_export_path(config: Optional[Dict[str, Any]] = None) -> Path:
         config = load_config()
 
     return Path(config.get("export_path", str(DEFAULT_EXPORT_PATH)))
+
+
+def get_backup_path(config: Optional[Dict[str, Any]] = None) -> Path:
+    """
+    Get the backup path from config.
+
+    Args:
+        config: Optional config dict. Loads from file if not provided.
+
+    Returns:
+        Path to the backup directory.
+    """
+    if config is None:
+        config = load_config()
+
+    return Path(config.get("backup_path", str(DEFAULT_BACKUP_PATH)))
 
 
 def get_verbosity(config: Optional[Dict[str, Any]] = None) -> int:

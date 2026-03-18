@@ -14,6 +14,7 @@ A powerful tool for extracting, searching, and displaying dialogs from Cursor ID
 - 🧠 **AI Thinking Process**: View AI reasoning and thinking duration
 - 📈 **Token Usage Tracking**: Monitor token consumption and infer models
 - 📋 **Rich Metadata**: Access 100+ fields of conversation data
+- 💾 **Backup & Restore**: Create compressed backups of Cursor IDE data and restore when needed
 
 ## Installation
 
@@ -269,12 +270,14 @@ Export settings are stored in `~/.cursor-chronicle/config.json`:
 ```json
 {
   "export_path": "/tmp/cursor-chronicle-export",
-  "verbosity": 2
+  "verbosity": 2,
+  "backup_path": "/home/user/.cursor-chronicle/backups"
 }
 ```
 
 - **export_path**: Default directory for exported files (default: `/tmp/cursor-chronicle-export`)
 - **verbosity**: Default verbosity level 1-3 (default: 2)
+- **backup_path**: Default directory for backups (default: `~/.cursor-chronicle/backups/`)
 
 You can override these settings via command-line arguments (`--export-path`, `--verbosity`).
 
@@ -289,6 +292,85 @@ You can override these settings via command-line arguments (`--export-path`, `--
 | `--from` | Export dialogs created after date (YYYY-MM-DD) |
 | `--before` | Export dialogs created before date (YYYY-MM-DD) |
 | `--show-config` | Display current configuration |
+
+## Backup & Restore
+
+Protect your Cursor IDE data with compressed backups. Backups capture the entire Cursor data directory as a `.tar.xz` archive with LZMA compression, and can be restored at any time.
+
+### Backup Commands
+
+```bash
+# Create a compressed backup of all Cursor databases
+cursor-chronicle --backup
+
+# Backup to a custom directory
+cursor-chronicle --backup --backup-path /path/to/backups
+
+# List all available backups
+cursor-chronicle --list-backups
+
+# Restore from the latest backup
+cursor-chronicle --restore latest
+
+# Restore from a specific backup file
+cursor-chronicle --restore cursor_backup_2026-03-17_14-30-15.tar.xz
+
+# Restore without creating a safety backup first
+cursor-chronicle --restore latest --no-pre-backup
+```
+
+### How It Works
+
+1. **Backup** scans the Cursor data directory (`~/.config/Cursor/`), compresses all files into a single `.tar.xz` archive, and stores it in `~/.cursor-chronicle/backups/` by default.
+2. **Restore** extracts the archive back to the original location. By default, a safety backup is created before restoring, so you can roll back if needed.
+3. Each archive includes a `backup_meta.json` with file inventory, sizes, and timestamps.
+
+### Backup Output
+
+The backup command shows real-time progress and a summary:
+
+```
+Creating backup of Cursor files...
+
+  [100%] 150/150  ...User/globalStorage/state.vscdb
+
+============================================================
+💾 CURSOR CHRONICLE - BACKUP SUMMARY
+============================================================
+
+  Backup file:       /home/user/.cursor-chronicle/backups/cursor_backup_2026-03-17_14-30-15.tar.xz
+  Created at:        2026-03-17T14:30:15
+  Files backed up:   150
+  Original size:     120.5 MB
+  Compressed size:   45.2 MB
+  Compression ratio: 62.5%
+
+  ✅ Backup created successfully!
+
+============================================================
+```
+
+### Backup Options
+
+| Option | Description |
+|--------|-------------|
+| `--backup` | Create a compressed backup of Cursor databases |
+| `--backup-path` | Override backup directory (default: `~/.cursor-chronicle/backups/`) |
+| `--list-backups` | List all available backups with size and metadata |
+| `--restore BACKUP` | Restore from a backup (`latest` or filename/path) |
+| `--no-pre-backup` | Skip the safety backup before restore |
+
+### Configuration
+
+The backup directory can be configured in `~/.cursor-chronicle/config.json`:
+
+```json
+{
+  "backup_path": "/home/user/.cursor-chronicle/backups"
+}
+```
+
+You can override this via the `--backup-path` command-line argument.
 
 ## Search History
 
@@ -430,6 +512,8 @@ cursor-chronicle/
 │   ├── formatters.py           # Output formatting
 │   ├── statistics.py           # Usage statistics
 │   ├── exporter.py             # Markdown export engine
+│   ├── backup.py               # Backup and restore engine
+│   ├── backup_formatters.py    # Backup output formatting
 │   ├── config.py               # Configuration management
 │   ├── cli.py                  # Command-line interface
 │   └── utils.py                # Shared utilities
@@ -449,6 +533,7 @@ cursor-chronicle/
 │   ├── test_formatters.py      # Formatter tests
 │   ├── test_statistics.py      # Statistics tests
 │   ├── test_exporter.py        # Export tests
+│   ├── test_backup*.py         # Backup and restore tests
 │   ├── test_config.py          # Config tests
 │   ├── test_cli.py             # CLI tests
 │   ├── test_search_*.py        # Search tests
@@ -591,6 +676,17 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 ```
 
 ## Changelog
+
+### Version 1.6.0
+- **New**: Backup and restore Cursor IDE data with `--backup`, `--list-backups`, and `--restore` commands
+- **New**: Compressed `.tar.xz` archives with LZMA compression for efficient storage
+- **New**: Safety pre-restore backup created automatically before restoring
+- **New**: Configurable backup directory via `--backup-path` or `backup_path` in config
+- **New**: `backup.py` and `backup_formatters.py` modules for backup engine and output formatting
+- **New**: Real-time progress display during backup and restore operations
+- **Improved**: `config.py` extended with `backup_path` setting and `get_backup_path()` helper
+- **Improved**: CLI updated with backup/restore argument group
+- **Improved**: Test coverage with comprehensive backup/restore tests (898 lines)
 
 ### Version 1.5.0
 - **New**: Export dialogs to Markdown files with `--export` command

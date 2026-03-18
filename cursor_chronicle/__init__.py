@@ -2,12 +2,23 @@
 Cursor Chronicle - Extract and display Cursor IDE chat history.
 """
 
+from .backup import (
+    create_backup,
+    format_backup_list,
+    format_backup_summary,
+    format_restore_summary,
+    list_backups,
+    restore_backup,
+)
+from .backup_formatters import _format_size as format_backup_size
 from .cli import main, parse_date
 from .config import (
+    DEFAULT_BACKUP_PATH,
     VERBOSITY_COMPACT,
     VERBOSITY_FULL,
     VERBOSITY_STANDARD,
     ensure_config_exists,
+    get_backup_path,
     get_config_path,
     get_export_path,
     get_verbosity,
@@ -52,10 +63,19 @@ __all__ = [
     "ensure_config_exists",
     "get_config_path",
     "get_export_path",
+    "get_backup_path",
     "get_verbosity",
     "VERBOSITY_COMPACT",
     "VERBOSITY_STANDARD",
     "VERBOSITY_FULL",
+    "DEFAULT_BACKUP_PATH",
+    # Backup
+    "create_backup",
+    "list_backups",
+    "restore_backup",
+    "format_backup_summary",
+    "format_backup_list",
+    "format_restore_summary",
     # Exporter
     "export_dialogs",
     "format_dialog_md",
@@ -84,4 +104,4 @@ __all__ = [
     "TOOL_TYPES",
 ]
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
