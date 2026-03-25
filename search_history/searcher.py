@@ -9,6 +9,8 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from cursor_chronicle.utils import parse_workspace_storage_meta
+
 # Handle broken pipe gracefully
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
@@ -44,14 +46,7 @@ class CursorHistorySearch:
                 with open(workspace_json, "r") as f:
                     workspace_data = json.load(f)
 
-                folder_uri = workspace_data.get("folder", "")
-                if folder_uri.startswith("file://"):
-                    import urllib.parse
-                    folder_path = urllib.parse.unquote(folder_uri[7:])
-                    project_name = Path(folder_path).name
-                else:
-                    project_name = folder_uri
-                    folder_path = folder_uri
+                project_name, folder_path = parse_workspace_storage_meta(workspace_data)
 
                 conn = sqlite3.connect(state_db)
                 cursor = conn.cursor()

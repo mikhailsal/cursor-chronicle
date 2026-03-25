@@ -2,11 +2,62 @@
 Shared utilities and constants for Cursor Chronicle.
 """
 
+import os
 import signal
+import urllib.parse
 from pathlib import Path
+from typing import Dict, Tuple
 
 # Handle broken pipe gracefully
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+_CODE_WORKSPACE_SUFFIX = ".code-workspace"
+
+
+def format_workspace_project_display_name(basename: str) -> str:
+    """
+    Human-friendly project label from a workspace path basename.
+
+    Does not change filesystem paths; used only for ``project_name`` in listings
+    and filters.
+    """
+    if basename == "workspace.json":
+        return "Unnamed Workspace"
+    if basename.endswith(_CODE_WORKSPACE_SUFFIX):
+        stem = basename[: -len(_CODE_WORKSPACE_SUFFIX)]
+        return stem if stem else "Unnamed Workspace"
+    return basename
+
+
+def parse_workspace_storage_meta(workspace_data: Dict) -> Tuple[str, str]:
+    """
+    Parse workspace.json from Cursor/VS Code workspace storage.
+
+    Single-folder workspaces set ``folder``; multi-root workspaces set ``workspace``
+    to the URI of the ``.code-workspace`` file.
+
+    Returns:
+        (project_name, folder_path) for display. For ``file://`` URIs, ``folder_path``
+        is the decoded filesystem path and ``project_name`` is its basename.
+    """
+    folder_uri = workspace_data.get("folder") or ""
+    workspace_value = workspace_data.get("workspace")
+    workspace_uri = ""
+    if isinstance(workspace_value, str) and workspace_value:
+        workspace_uri = workspace_value
+    elif isinstance(workspace_value, dict):
+        nested = workspace_value.get("configPath") or workspace_value.get("folder")
+        if isinstance(nested, str):
+            workspace_uri = nested
+
+    effective_uri = folder_uri or workspace_uri
+
+    if effective_uri.startswith("file://"):
+        folder_path = urllib.parse.unquote(effective_uri[7:])
+        raw_basename = os.path.basename(folder_path)
+        return format_workspace_project_display_name(raw_basename), folder_path
+
+    return (effective_uri, effective_uri)
 
 
 def get_cursor_paths() -> tuple:
