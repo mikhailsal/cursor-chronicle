@@ -38,7 +38,14 @@ class TestCursorChronicle(unittest.TestCase):
         self.assertIsInstance(viewer.cursor_config_path, Path)
         self.assertIsInstance(viewer.workspace_storage_path, Path)
         self.assertIsInstance(viewer.global_storage_path, Path)
-        self.assertTrue(str(viewer.cursor_config_path).endswith(".config/Cursor/User"))
+        p = str(viewer.cursor_config_path)
+        if sys.platform == "darwin":
+            self.assertTrue(p.endswith("Application Support/Cursor/User"))
+        elif sys.platform == "win32":
+            norm = p.replace("\\", "/")
+            self.assertTrue(norm.endswith("Cursor/User"))
+        else:
+            self.assertTrue(p.endswith(".config/Cursor/User"))
         self.assertTrue(str(viewer.workspace_storage_path).endswith("workspaceStorage"))
         self.assertTrue(str(viewer.global_storage_path).endswith("state.vscdb"))
 
