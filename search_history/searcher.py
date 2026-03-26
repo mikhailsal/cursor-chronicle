@@ -9,6 +9,8 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from cursor_chronicle.utils import get_cursor_paths
+
 # Handle broken pipe gracefully
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
@@ -17,11 +19,11 @@ class CursorHistorySearch:
     """Search through Cursor IDE chat history."""
 
     def __init__(self):
-        self.cursor_config_path = Path.home() / ".config" / "Cursor" / "User"
-        self.workspace_storage_path = self.cursor_config_path / "workspaceStorage"
-        self.global_storage_path = (
-            self.cursor_config_path / "globalStorage" / "state.vscdb"
-        )
+        (
+            self.cursor_config_path,
+            self.workspace_storage_path,
+            self.global_storage_path,
+        ) = get_cursor_paths()
 
     def get_all_composers(self) -> List[Dict]:
         """Get all composers from all workspaces with project info."""
