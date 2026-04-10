@@ -10,12 +10,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .formatters import (
-    format_attached_files as _format_attached_files,
-    format_tool_call as _format_tool_call,
-    format_token_info as _format_token_info,
-    infer_model_from_context as _infer_model_from_context,
-)
+from .formatters import format_attached_files as _format_attached_files
+from .formatters import format_token_info as _format_token_info
+from .formatters import format_tool_call as _format_tool_call
+from .formatters import infer_model_from_context as _infer_model_from_context
 from .messages import get_dialog_messages as _get_dialog_messages
 from .utils import TOOL_TYPES, get_cursor_paths
 
@@ -83,10 +81,22 @@ class CursorChatViewer:
                     workspace_data = json.load(f)
 
                 folder_uri = workspace_data.get("folder", "")
+                workspace_uri = workspace_data.get("workspace", "")
                 if folder_uri.startswith("file://"):
                     folder_path = urllib.parse.unquote(folder_uri[7:])
                     project_name = os.path.basename(folder_path)
+                elif workspace_uri.startswith("file://"):
+                    ws_path = urllib.parse.unquote(workspace_uri[7:])
+                    folder_path = ws_path
+                    basename = os.path.basename(ws_path)
+                    if basename.endswith(".code-workspace"):
+                        project_name = basename.replace(".code-workspace", "")
+                    elif basename == "workspace.json":
+                        project_name = os.path.basename(os.path.dirname(ws_path))
+                    else:
+                        project_name = basename
                 else:
+                    folder_path = folder_uri
                     project_name = folder_uri
 
                 conn = sqlite3.connect(state_db)
@@ -105,16 +115,16 @@ class CursorChatViewer:
                             composers, key=lambda x: x.get("lastUpdatedAt", 0)
                         )
 
-                    projects.append({
-                        "workspace_id": workspace_dir.name,
-                        "project_name": project_name,
-                        "folder_path": (
-                            folder_path if folder_uri.startswith("file://") else folder_uri
-                        ),
-                        "composers": composers,
-                        "latest_dialog": latest_dialog,
-                        "state_db_path": str(state_db),
-                    })
+                    projects.append(
+                        {
+                            "workspace_id": workspace_dir.name,
+                            "project_name": project_name,
+                            "folder_path": folder_path,
+                            "composers": composers,
+                            "latest_dialog": latest_dialog,
+                            "state_db_path": str(state_db),
+                        }
+                    )
 
                 conn.close()
 
@@ -141,7 +151,7 @@ class CursorChatViewer:
     ) -> List[Dict]:
         """
         Get all dialogs across all projects, optionally filtered.
-        
+
         Args:
             start_date: Filter dialogs after this date (inclusive)
             end_date: Filter dialogs before this date (inclusive)
@@ -171,21 +181,26 @@ class CursorChatViewer:
                 if end_ts and filter_date > end_ts:
                     continue
 
-                all_dialogs.append({
-                    "composer_id": composer.get("composerId", "unknown"),
-                    "name": composer.get("name", "Untitled"),
-                    "project_name": project["project_name"],
-                    "folder_path": project["folder_path"],
-                    "last_updated": last_updated,
-                    "created_at": created_at,
-                })
+                all_dialogs.append(
+                    {
+                        "composer_id": composer.get("composerId", "unknown"),
+                        "name": composer.get("name", "Untitled"),
+                        "project_name": project["project_name"],
+                        "folder_path": project["folder_path"],
+                        "last_updated": last_updated,
+                        "created_at": created_at,
+                    }
+                )
 
         if sort_by == "name":
             all_dialogs.sort(key=lambda x: x.get("name", "").lower(), reverse=sort_desc)
         elif sort_by == "project":
             all_dialogs.sort(
-                key=lambda x: (x.get("project_name", "").lower(), x.get("name", "").lower()),
-                reverse=sort_desc
+                key=lambda x: (
+                    x.get("project_name", "").lower(),
+                    x.get("name", "").lower(),
+                ),
+                reverse=sort_desc,
             )
         else:
             date_field = "last_updated" if use_updated else "created_at"

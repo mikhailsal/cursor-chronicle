@@ -2,6 +2,7 @@
 Shared utilities and constants for Cursor Chronicle.
 """
 
+import platform
 import signal
 from pathlib import Path
 
@@ -12,11 +13,16 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 def get_cursor_paths() -> tuple:
     """
     Get standard Cursor IDE paths.
-    
+
     Returns:
         Tuple of (cursor_config_path, workspace_storage_path, global_storage_path)
     """
-    cursor_config_path = Path.home() / ".config" / "Cursor" / "User"
+    if platform.system() == "Darwin":
+        cursor_config_path = (
+            Path.home() / "Library" / "Application Support" / "Cursor" / "User"
+        )
+    else:
+        cursor_config_path = Path.home() / ".config" / "Cursor" / "User"
     workspace_storage_path = cursor_config_path / "workspaceStorage"
     global_storage_path = cursor_config_path / "globalStorage" / "state.vscdb"
     return cursor_config_path, workspace_storage_path, global_storage_path
