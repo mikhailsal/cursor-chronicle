@@ -552,12 +552,19 @@ Cursor Chronicle understands the complex internal structure of Cursor IDE's SQLi
 
 Cursor IDE uses SQLite databases to store chat history:
 
-- **Global Storage**: `~/.config/Cursor/User/globalStorage/state.vscdb`
+- **Cursor User directory (auto-detected by OS)**
+  - macOS: `~/Library/Application Support/Cursor/User`
+  - Linux: `~/.config/Cursor/User`
+  - Windows: `%APPDATA%/Cursor/User` (fallback: `~/AppData/Roaming/Cursor/User`)
+- **Optional override**: set `CURSOR_USER_DIR` to force a custom Cursor `User` directory.
+  - Example: `CURSOR_USER_DIR="/custom/path/Cursor/User" cursor-chronicle --list-projects`
+
+- **Global Storage**: `<Cursor User>/globalStorage/state.vscdb`
   - Contains actual message `bubbles` (individual chat messages and tool outputs)
   - Bubbles stored under keys: `bubbleId:<composerId>:<bubbleId>`
   - Over 100 different fields per bubble with comprehensive metadata
 
-- **Workspace Storage**: `~/.config/Cursor/User/workspaceStorage/<workspace_id>/state.vscdb`
+- **Workspace Storage**: `<Cursor User>/workspaceStorage/<workspace_id>/state.vscdb`
   - Each workspace has its own database
   - Contains high-level `composerData` (chat sessions metadata)
   - Stores individual composer details under `composerData:<composerId>`
@@ -670,9 +677,12 @@ MIT License - see [LICENSE](LICENSE) file for details.
 For troubleshooting, examine the database structure directly:
 
 ```bash
-# Check if databases exist
+# Check if databases exist (Linux example)
 ls -la ~/.config/Cursor/User/globalStorage/
 ls -la ~/.config/Cursor/User/workspaceStorage/
+
+# Or use a custom Cursor User directory
+CURSOR_USER_DIR="/custom/path/Cursor/User" cursor-chronicle --list-projects
 ```
 
 ## Changelog

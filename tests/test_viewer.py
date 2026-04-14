@@ -38,7 +38,8 @@ class TestCursorChronicle(unittest.TestCase):
         self.assertIsInstance(viewer.cursor_config_path, Path)
         self.assertIsInstance(viewer.workspace_storage_path, Path)
         self.assertIsInstance(viewer.global_storage_path, Path)
-        self.assertTrue(str(viewer.cursor_config_path).endswith(".config/Cursor/User"))
+        self.assertEqual(viewer.cursor_config_path.name, "User")
+        self.assertEqual(viewer.cursor_config_path.parent.name, "Cursor")
         self.assertTrue(str(viewer.workspace_storage_path).endswith("workspaceStorage"))
         self.assertTrue(str(viewer.global_storage_path).endswith("state.vscdb"))
 
