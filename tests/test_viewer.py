@@ -2,7 +2,10 @@
 Tests for viewer.py module - core CursorChatViewer functionality.
 """
 
+import json
+import sqlite3
 import sys
+import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
@@ -291,6 +294,94 @@ class TestListAllDialogsWithData(unittest.TestCase):
         self.assertTrue(
             "cursor-chronicle" in output.lower() or "No dialogs found" in output
         )
+
+
+class TestGetProjectsMultiRootMetadata(unittest.TestCase):
+    """workspace.json uses ``workspace`` URI for multi-root (.code-workspace) projects."""
+
+    def _make_workspace_with_composers(self, tmpdir: Path, workspace_json_payload: dict) -> None:
+        workspace_dir = tmpdir / "ws1"
+        workspace_dir.mkdir()
+        (workspace_dir / "workspace.json").write_text(
+            json.dumps(workspace_json_payload), encoding="utf-8"
+        )
+        state_db = workspace_dir / "state.vscdb"
+        conn = sqlite3.connect(state_db)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+        cursor.execute(
+            "INSERT INTO ItemTable VALUES (?, ?)",
+            (
+                "composer.composerData",
+                json.dumps({
+                    "allComposers": [
+                        {
+                            "composerId": "c1",
+                            "name": "Chat",
+                            "lastUpdatedAt": 1704067200000,
+                            "createdAt": 1704067200000,
+                        }
+                    ]
+                }),
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+    def test_get_projects_uses_workspace_file_uri_when_folder_absent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            ws_file = tmp_path / "monorepo.code-workspace"
+            ws_file.write_text('{"folders": []}', encoding="utf-8")
+            workspace_uri = ws_file.resolve().as_uri()
+            self._make_workspace_with_composers(
+                tmp_path, {"workspace": workspace_uri}
+            )
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.workspace_storage_path = tmp_path
+            projects = viewer.get_projects()
+
+            self.assertEqual(len(projects), 1)
+            self.assertEqual(projects[0]["project_name"], "monorepo")
+            self.assertEqual(projects[0]["folder_path"], str(ws_file.resolve()))
+
+    def test_get_projects_unnamed_workspace_when_basename_is_workspace_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            # Legacy / unnamed: URI basename is workspace.json (not the storage metadata file).
+            weird = tmp_path / "somewhere" / "workspace.json"
+            weird.parent.mkdir(parents=True)
+            weird.write_text("{}", encoding="utf-8")
+            uri = weird.resolve().as_uri()
+            self._make_workspace_with_composers(tmp_path, {"folder": uri})
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.workspace_storage_path = tmp_path
+            projects = viewer.get_projects()
+
+            self.assertEqual(len(projects), 1)
+            self.assertEqual(projects[0]["project_name"], "Unnamed Workspace")
+            self.assertEqual(projects[0]["folder_path"], str(weird.resolve()))
+
+    def test_parse_workspace_storage_meta_prefers_folder_over_workspace(self):
+        from cursor_chronicle.utils import parse_workspace_storage_meta
+
+        name, path = parse_workspace_storage_meta({
+            "folder": "file:///home/user/single-repo",
+            "workspace": "file:///tmp/ignored.code-workspace",
+        })
+        self.assertEqual(name, "single-repo")
+        self.assertEqual(path, "/home/user/single-repo")
+
+    def test_parse_workspace_storage_meta_strips_code_workspace_suffix(self):
+        from cursor_chronicle.utils import parse_workspace_storage_meta
+
+        name, path = parse_workspace_storage_meta({
+            "workspace": "file:///tmp/my-app.code-workspace",
+        })
+        self.assertEqual(name, "my-app")
+        self.assertEqual(path, "/tmp/my-app.code-workspace")
 
 
 class TestListProjects(unittest.TestCase):

@@ -3,9 +3,7 @@ Core CursorChatViewer class - project and dialog data access.
 """
 
 import json
-import os
 import sqlite3
-import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -17,7 +15,7 @@ from .formatters import (
     infer_model_from_context as _infer_model_from_context,
 )
 from .messages import get_dialog_messages as _get_dialog_messages
-from .utils import TOOL_TYPES, get_cursor_paths
+from .utils import TOOL_TYPES, get_cursor_paths, parse_workspace_storage_meta
 
 
 class CursorChatViewer:
@@ -82,12 +80,7 @@ class CursorChatViewer:
                 with open(workspace_json, "r") as f:
                     workspace_data = json.load(f)
 
-                folder_uri = workspace_data.get("folder", "")
-                if folder_uri.startswith("file://"):
-                    folder_path = urllib.parse.unquote(folder_uri[7:])
-                    project_name = os.path.basename(folder_path)
-                else:
-                    project_name = folder_uri
+                project_name, folder_path = parse_workspace_storage_meta(workspace_data)
 
                 conn = sqlite3.connect(state_db)
                 cursor = conn.cursor()
@@ -108,9 +101,7 @@ class CursorChatViewer:
                     projects.append({
                         "workspace_id": workspace_dir.name,
                         "project_name": project_name,
-                        "folder_path": (
-                            folder_path if folder_uri.startswith("file://") else folder_uri
-                        ),
+                        "folder_path": folder_path,
                         "composers": composers,
                         "latest_dialog": latest_dialog,
                         "state_db_path": str(state_db),
