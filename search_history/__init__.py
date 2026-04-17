@@ -14,4 +14,4 @@ __all__ = [
     "highlight_query",
 ]
 
-__version__ = "1.4.0"
+__version__ = "1.7.0"

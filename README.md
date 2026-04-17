@@ -677,6 +677,16 @@ ls -la ~/.config/Cursor/User/workspaceStorage/
 
 ## Changelog
 
+### Version 1.7.0
+- **New**: Cross-platform support — macOS (`~/Library/Application Support/Cursor/User`), Windows (`%APPDATA%/Cursor/User`), and Linux (`~/.config/Cursor/User`) paths auto-detected
+- **New**: `CURSOR_CHRONICLE_CURSOR_USER_DIR` environment variable override for custom Cursor installations and containers
+- **New**: Multi-root workspace support — projects using `.code-workspace` files now correctly listed and resolved
+- **New**: `parse_workspace_storage_meta` and `format_workspace_project_display_name` utility helpers
+- **Improved**: `get_cursor_paths()` refactored to use OS-aware `resolve_cursor_user_dir()` internally
+- **Improved**: `search_history` module wired through shared path resolution
+- **Improved**: Test coverage extended with `test_cursor_paths.py` and multi-root workspace tests
+- **Community**: Contributions by [@varontron](https://github.com/varontron) (PR #1, #2) — thank you!
+
 ### Version 1.6.0
 - **New**: Backup and restore Cursor IDE data with `--backup`, `--list-backups`, and `--restore` commands
 - **New**: Compressed `.tar.xz` archives with LZMA compression for efficient storage
