@@ -22,7 +22,9 @@ class TestStatisticsFeature(unittest.TestCase):
         viewer = cursor_chronicle.CursorChatViewer()
         end_date = datetime.now()
         start_date = end_date - timedelta(days=1)
-        result = cursor_chronicle.get_dialog_statistics(viewer, start_date=start_date, end_date=end_date)
+        result = cursor_chronicle.get_dialog_statistics(
+            viewer, start_date=start_date, end_date=end_date
+        )
         self.assertIsInstance(result, dict)
 
     def test_get_dialog_statistics_has_required_keys(self):
@@ -30,7 +32,9 @@ class TestStatisticsFeature(unittest.TestCase):
         viewer = cursor_chronicle.CursorChatViewer()
         end_date = datetime.now()
         start_date = end_date - timedelta(days=1)
-        result = cursor_chronicle.get_dialog_statistics(viewer, start_date=start_date, end_date=end_date)
+        result = cursor_chronicle.get_dialog_statistics(
+            viewer, start_date=start_date, end_date=end_date
+        )
 
         required_keys = ["period_start", "period_end", "total_dialogs", "projects"]
         for key in required_keys:
@@ -42,7 +46,9 @@ class TestStatisticsFeature(unittest.TestCase):
         end_date = datetime.now()
         start_date = end_date - timedelta(days=7)
 
-        result = cursor_chronicle.get_dialog_statistics(viewer, start_date=start_date, end_date=end_date)
+        result = cursor_chronicle.get_dialog_statistics(
+            viewer, start_date=start_date, end_date=end_date
+        )
 
         self.assertIsInstance(result, dict)
         self.assertEqual(result["period_start"], start_date)
@@ -57,7 +63,12 @@ class TestStatisticsFeature(unittest.TestCase):
         projects = viewer.get_projects()
         if projects:
             project_name = projects[0]["project_name"]
-            result = cursor_chronicle.get_dialog_statistics(viewer, start_date=start_date, end_date=end_date, project_filter=project_name)
+            result = cursor_chronicle.get_dialog_statistics(
+                viewer,
+                start_date=start_date,
+                end_date=end_date,
+                project_filter=project_name,
+            )
 
             self.assertIsInstance(result, dict)
             for proj_name in result.get("projects", {}).keys():
@@ -68,7 +79,9 @@ class TestStatisticsFeature(unittest.TestCase):
         viewer = cursor_chronicle.CursorChatViewer()
         end_date = datetime.now()
         start_date = end_date - timedelta(days=1)
-        result = cursor_chronicle.get_dialog_statistics(viewer, start_date=start_date, end_date=end_date)
+        result = cursor_chronicle.get_dialog_statistics(
+            viewer, start_date=start_date, end_date=end_date
+        )
 
         if result["total_dialogs"] > 0:
             self.assertGreaterEqual(result.get("total_messages", 0), 0)
@@ -84,7 +97,9 @@ class TestStatisticsFeature(unittest.TestCase):
         end_date = datetime.now()
         start_date = end_date - timedelta(days=7)
 
-        result = cursor_chronicle.get_dialog_statistics(viewer, start_date=start_date, end_date=end_date)
+        result = cursor_chronicle.get_dialog_statistics(
+            viewer, start_date=start_date, end_date=end_date
+        )
 
         self.assertIn("daily_activity", result)
         self.assertIsInstance(result["daily_activity"], dict)
@@ -95,7 +110,12 @@ class TestFormatStatistics(unittest.TestCase):
 
     def test_format_statistics_empty_stats(self):
         """Test format_statistics with empty data."""
-        empty_stats = {"period_start": None, "period_end": None, "total_dialogs": 0, "projects": {}}
+        empty_stats = {
+            "period_start": None,
+            "period_end": None,
+            "total_dialogs": 0,
+            "projects": {},
+        }
         result = cursor_chronicle.format_statistics(empty_stats)
         self.assertIn("No dialogs found", result)
 
@@ -115,8 +135,14 @@ class TestFormatStatistics(unittest.TestCase):
             "total_thinking_time_ms": 30000,
             "projects": {
                 "test-project": {
-                    "dialogs": 5, "messages": 100, "user_messages": 30, "ai_messages": 70,
-                    "tool_calls": 50, "tokens_in": 10000, "tokens_out": 5000, "dialog_names": ["Dialog 1", "Dialog 2"],
+                    "dialogs": 5,
+                    "messages": 100,
+                    "user_messages": 30,
+                    "ai_messages": 70,
+                    "tool_calls": 50,
+                    "tokens_in": 10000,
+                    "tokens_out": 5000,
+                    "dialog_names": ["Dialog 1", "Dialog 2"],
                 }
             },
             "tool_usage": Counter({"read_file": 20, "edit_file": 30}),
@@ -149,7 +175,11 @@ class TestFormatStatistics(unittest.TestCase):
             "total_thinking_time_ms": 0,
             "projects": {},
             "tool_usage": Counter(),
-            "daily_activity": {"2024-01-02": {"dialogs": 2, "messages": 40}, "2024-01-05": {"dialogs": 1, "messages": 30}, "2024-01-08": {"dialogs": 2, "messages": 30}},
+            "daily_activity": {
+                "2024-01-02": {"dialogs": 2, "messages": 40},
+                "2024-01-05": {"dialogs": 1, "messages": 30},
+                "2024-01-08": {"dialogs": 2, "messages": 30},
+            },
             "dialogs_by_length": [],
         }
 
@@ -175,7 +205,10 @@ class TestFormatStatistics(unittest.TestCase):
             "total_thinking_time_ms": 0,
             "projects": {},
             "tool_usage": Counter(),
-            "daily_activity": {"2024-01-02": {"dialogs": 2, "messages": 40}, "2024-01-05": {"dialogs": 1, "messages": 30}},
+            "daily_activity": {
+                "2024-01-02": {"dialogs": 2, "messages": 40},
+                "2024-01-05": {"dialogs": 1, "messages": 30},
+            },
             "dialogs_by_length": [],
         }
 
@@ -200,7 +233,9 @@ class TestFormatStatistics(unittest.TestCase):
             "total_thinking_time_ms": 0,
             "projects": {},
             "tool_usage": Counter(),
-            "daily_activity": {f"2025-05-{i:02d}": {"dialogs": 1, "messages": 5} for i in range(1, 28)},
+            "daily_activity": {
+                f"2025-05-{i:02d}": {"dialogs": 1, "messages": 5} for i in range(1, 28)
+            },
             "dialogs_by_length": [],
         }
 
@@ -235,7 +270,9 @@ class TestFormatStatistics(unittest.TestCase):
 
     def test_format_statistics_max_days_limit(self):
         """Test daily activity is limited by max_days."""
-        daily_activity = {f"2024-01-{i:02d}": {"dialogs": 1, "messages": 5} for i in range(1, 25)}
+        daily_activity = {
+            f"2024-01-{i:02d}": {"dialogs": 1, "messages": 5} for i in range(1, 25)
+        }
 
         stats = {
             "period_start": datetime(2024, 1, 1),
@@ -263,8 +300,14 @@ class TestFormatStatistics(unittest.TestCase):
         """Test project activity truncation."""
         projects = {
             f"project{i}": {
-                "dialogs": i, "messages": i * 10, "user_messages": i * 3, "ai_messages": i * 7,
-                "tool_calls": i, "tokens_in": i * 100, "tokens_out": i * 50, "dialog_names": [],
+                "dialogs": i,
+                "messages": i * 10,
+                "user_messages": i * 3,
+                "ai_messages": i * 7,
+                "tool_calls": i,
+                "tokens_in": i * 100,
+                "tokens_out": i * 50,
+                "dialog_names": [],
             }
             for i in range(1, 20)
         }
@@ -304,7 +347,9 @@ class TestShowStatistics(unittest.TestCase):
         captured = StringIO()
         sys.stdout = captured
         try:
-            cursor_chronicle.show_statistics(viewer, days=1, start_date=start_date, end_date=end_date)
+            cursor_chronicle.show_statistics(
+                viewer, days=1, start_date=start_date, end_date=end_date
+            )
         finally:
             sys.stdout = sys.__stdout__
 

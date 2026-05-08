@@ -169,7 +169,11 @@ def _format_tool_call_md(tool_data: Dict, verbosity: int) -> str:
                     lines.append("")
                     lines.append("**Parameters:**")
                     for key, value in args.items():
-                        if isinstance(value, str) and len(value) > 200 and verbosity < VERBOSITY_FULL:
+                        if (
+                            isinstance(value, str)
+                            and len(value) > 200
+                            and verbosity < VERBOSITY_FULL
+                        ):
                             value = value[:200] + "..."
                         lines.append(f"- `{key}`: {value}")
             except (json.JSONDecodeError, TypeError):
@@ -186,7 +190,9 @@ def _format_tool_call_md(tool_data: Dict, verbosity: int) -> str:
                     else:
                         result_data = None
                     if result_data is not None:
-                        result_str = json.dumps(result_data, indent=2, ensure_ascii=False)
+                        result_str = json.dumps(
+                            result_data, indent=2, ensure_ascii=False
+                        )
                         lines.append("")
                         lines.append("**Result:**")
                         lines.append("```")

@@ -34,25 +34,52 @@ class TestSearchAllFast(unittest.TestCase):
             workspace_dir.mkdir()
 
             workspace_json = workspace_dir / "workspace.json"
-            workspace_json.write_text(json.dumps({"folder": "file:///home/user/project"}))
+            workspace_json.write_text(
+                json.dumps({"folder": "file:///home/user/project"})
+            )
 
             state_db = workspace_dir / "state.vscdb"
             conn = sqlite3.connect(state_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE ItemTable (key TEXT, value TEXT)')
-            cursor.execute("INSERT INTO ItemTable VALUES (?, ?)",
-                           ("composer.composerData", json.dumps({
-                               "allComposers": [{"composerId": "comp1", "name": "Test Dialog", "lastUpdatedAt": 1704067200000, "createdAt": 1704067200000}]
-                           })))
+            cursor.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cursor.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "comp1",
+                                    "name": "Test Dialog",
+                                    "lastUpdatedAt": 1704067200000,
+                                    "createdAt": 1704067200000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
             conn.commit()
             conn.close()
 
             global_db = Path(tmpdir) / "global.vscdb"
             conn = sqlite3.connect(global_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
-            cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                           ("bubbleId:comp1:bubble1", json.dumps({"bubbleId": "bubble1", "text": "KiloCode implementation " + "x" * 100, "type": 1})))
+            cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
+            cursor.execute(
+                "INSERT INTO cursorDiskKV VALUES (?, ?)",
+                (
+                    "bubbleId:comp1:bubble1",
+                    json.dumps(
+                        {
+                            "bubbleId": "bubble1",
+                            "text": "KiloCode implementation " + "x" * 100,
+                            "type": 1,
+                        }
+                    ),
+                ),
+            )
             conn.commit()
             conn.close()
 
@@ -72,23 +99,51 @@ class TestSearchAllFast(unittest.TestCase):
             workspace_dir.mkdir()
 
             workspace_json = workspace_dir / "workspace.json"
-            workspace_json.write_text(json.dumps({"folder": "file:///home/user/myproject"}))
+            workspace_json.write_text(
+                json.dumps({"folder": "file:///home/user/myproject"})
+            )
 
             state_db = workspace_dir / "state.vscdb"
             conn = sqlite3.connect(state_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE ItemTable (key TEXT, value TEXT)')
-            cursor.execute("INSERT INTO ItemTable VALUES (?, ?)",
-                           ("composer.composerData", json.dumps({"allComposers": [{"composerId": "comp1", "name": "Test", "lastUpdatedAt": 1704067200000}]})))
+            cursor.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cursor.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "comp1",
+                                    "name": "Test",
+                                    "lastUpdatedAt": 1704067200000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
             conn.commit()
             conn.close()
 
             global_db = Path(tmpdir) / "global.vscdb"
             conn = sqlite3.connect(global_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
-            cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                           ("bubbleId:comp1:bubble1", json.dumps({"bubbleId": "bubble1", "text": "KiloCode " + "x" * 100, "type": 1})))
+            cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
+            cursor.execute(
+                "INSERT INTO cursorDiskKV VALUES (?, ?)",
+                (
+                    "bubbleId:comp1:bubble1",
+                    json.dumps(
+                        {
+                            "bubbleId": "bubble1",
+                            "text": "KiloCode " + "x" * 100,
+                            "type": 1,
+                        }
+                    ),
+                ),
+            )
             conn.commit()
             conn.close()
 
@@ -110,25 +165,53 @@ class TestSearchAllFast(unittest.TestCase):
             workspace_dir.mkdir()
 
             workspace_json = workspace_dir / "workspace.json"
-            workspace_json.write_text(json.dumps({"folder": "file:///home/user/project"}))
+            workspace_json.write_text(
+                json.dumps({"folder": "file:///home/user/project"})
+            )
 
             state_db = workspace_dir / "state.vscdb"
             conn = sqlite3.connect(state_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE ItemTable (key TEXT, value TEXT)')
-            cursor.execute("INSERT INTO ItemTable VALUES (?, ?)",
-                           ("composer.composerData", json.dumps({"allComposers": [{"composerId": "comp1", "name": "Test", "lastUpdatedAt": 1704067200000}]})))
+            cursor.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cursor.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "comp1",
+                                    "name": "Test",
+                                    "lastUpdatedAt": 1704067200000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
             conn.commit()
             conn.close()
 
             global_db = Path(tmpdir) / "global.vscdb"
             conn = sqlite3.connect(global_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+            cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
             for i in range(10):
-                cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                               (f"bubbleId:comp1:bubble{i}", json.dumps({"bubbleId": f"bubble{i}", "text": f"KiloCode message {i} " + "x" * 100, "type": 1})))
+                cursor.execute(
+                    "INSERT INTO cursorDiskKV VALUES (?, ?)",
+                    (
+                        f"bubbleId:comp1:bubble{i}",
+                        json.dumps(
+                            {
+                                "bubbleId": f"bubble{i}",
+                                "text": f"KiloCode message {i} " + "x" * 100,
+                                "type": 1,
+                            }
+                        ),
+                    ),
+                )
             conn.commit()
             conn.close()
 
@@ -153,15 +236,17 @@ class TestGetDialogContext(unittest.TestCase):
         """Test when bubble is not found in order."""
         searcher = search_history.CursorHistorySearch()
 
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
         composer_data = {"fullConversationHeadersOnly": [{"bubbleId": "other_bubble"}]}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("composerData:comp1", json.dumps(composer_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("composerData:comp1", json.dumps(composer_data)),
+        )
         conn.commit()
         conn.close()
 
@@ -177,20 +262,40 @@ class TestGetDialogContext(unittest.TestCase):
         """Test getting dialog context."""
         searcher = search_history.CursorHistorySearch()
 
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
-        composer_data = {"fullConversationHeadersOnly": [{"bubbleId": "bubble1"}, {"bubbleId": "bubble2"}, {"bubbleId": "bubble3"}], "padding": "x" * 100}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("composerData:comp1", json.dumps(composer_data)))
+        composer_data = {
+            "fullConversationHeadersOnly": [
+                {"bubbleId": "bubble1"},
+                {"bubbleId": "bubble2"},
+                {"bubbleId": "bubble3"},
+            ],
+            "padding": "x" * 100,
+        }
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("composerData:comp1", json.dumps(composer_data)),
+        )
 
         for i in range(1, 4):
-            cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                           (f"bubbleId:comp1:bubble{i}", json.dumps({"bubbleId": f"bubble{i}", "text": f"Message {i} " + "x" * 100, "type": 1 if i % 2 else 2})))
+            cursor.execute(
+                "INSERT INTO cursorDiskKV VALUES (?, ?)",
+                (
+                    f"bubbleId:comp1:bubble{i}",
+                    json.dumps(
+                        {
+                            "bubbleId": f"bubble{i}",
+                            "text": f"Message {i} " + "x" * 100,
+                            "type": 1 if i % 2 else 2,
+                        }
+                    ),
+                ),
+            )
 
         conn.commit()
         conn.close()
@@ -219,21 +324,43 @@ class TestGetFullDialog(unittest.TestCase):
         """Test getting full dialog with ordered bubbles."""
         searcher = search_history.CursorHistorySearch()
 
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
-        composer_data = {"fullConversationHeadersOnly": [{"bubbleId": "bubble1"}, {"bubbleId": "bubble2"}], "padding": "x" * 100}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("composerData:comp1", json.dumps(composer_data)))
+        composer_data = {
+            "fullConversationHeadersOnly": [
+                {"bubbleId": "bubble1"},
+                {"bubbleId": "bubble2"},
+            ],
+            "padding": "x" * 100,
+        }
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("composerData:comp1", json.dumps(composer_data)),
+        )
 
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:comp1:bubble1", json.dumps({"bubbleId": "bubble1", "text": "Hello " + "x" * 100, "type": 1})))
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:comp1:bubble2", json.dumps({"bubbleId": "bubble2", "text": "Hi there! " + "x" * 100, "type": 2})))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            (
+                "bubbleId:comp1:bubble1",
+                json.dumps(
+                    {"bubbleId": "bubble1", "text": "Hello " + "x" * 100, "type": 1}
+                ),
+            ),
+        )
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            (
+                "bubbleId:comp1:bubble2",
+                json.dumps(
+                    {"bubbleId": "bubble2", "text": "Hi there! " + "x" * 100, "type": 2}
+                ),
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -252,17 +379,31 @@ class TestGetFullDialog(unittest.TestCase):
         """Test getting full dialog with fallback to rowid order."""
         searcher = search_history.CursorHistorySearch()
 
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:comp1:bubble1", json.dumps({"bubbleId": "bubble1", "text": "First " + "x" * 100, "type": 1})))
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:comp1:bubble2", json.dumps({"bubbleId": "bubble2", "text": "Second " + "x" * 100, "type": 2})))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            (
+                "bubbleId:comp1:bubble1",
+                json.dumps(
+                    {"bubbleId": "bubble1", "text": "First " + "x" * 100, "type": 1}
+                ),
+            ),
+        )
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            (
+                "bubbleId:comp1:bubble2",
+                json.dumps(
+                    {"bubbleId": "bubble2", "text": "Second " + "x" * 100, "type": 2}
+                ),
+            ),
+        )
 
         conn.commit()
         conn.close()
@@ -279,15 +420,27 @@ class TestGetFullDialog(unittest.TestCase):
         """Test getting dialog with tool data."""
         searcher = search_history.CursorHistorySearch()
 
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:comp1:bubble1", json.dumps({"bubbleId": "bubble1", "text": "", "type": 2, "toolFormerData": {"name": "read_file", "padding": "x" * 100}})))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            (
+                "bubbleId:comp1:bubble1",
+                json.dumps(
+                    {
+                        "bubbleId": "bubble1",
+                        "text": "",
+                        "type": 2,
+                        "toolFormerData": {"name": "read_file", "padding": "x" * 100},
+                    }
+                ),
+            ),
+        )
 
         conn.commit()
         conn.close()

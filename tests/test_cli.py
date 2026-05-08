@@ -68,7 +68,10 @@ class TestCreateParser(unittest.TestCase):
         self.assertEqual(create_parser().parse_args(["--verbosity", "3"]).verbosity, 3)
 
     def test_export_path_arg(self):
-        self.assertEqual(create_parser().parse_args(["--export-path", "/tmp/test"]).export_path, "/tmp/test")
+        self.assertEqual(
+            create_parser().parse_args(["--export-path", "/tmp/test"]).export_path,
+            "/tmp/test",
+        )
 
     def test_show_config_arg(self):
         self.assertTrue(create_parser().parse_args(["--show-config"]).show_config)
@@ -139,8 +142,14 @@ class TestRunExport(unittest.TestCase):
     @patch("cursor_chronicle.cli.export_dialogs")
     @patch("cursor_chronicle.cli.show_export_summary")
     def test_calls_export_dialogs(self, mock_summary, mock_export):
-        mock_export.return_value = {"total_dialogs": 5, "exported": 5, "errors": 0,
-                                    "skipped": 0, "export_path": "/tmp/test", "verbosity": 2}
+        mock_export.return_value = {
+            "total_dialogs": 5,
+            "exported": 5,
+            "errors": 0,
+            "skipped": 0,
+            "export_path": "/tmp/test",
+            "verbosity": 2,
+        }
         mock_summary.return_value = "Summary"
         args = MagicMock()
         args.export_path = None
@@ -160,8 +169,14 @@ class TestRunExport(unittest.TestCase):
     @patch("cursor_chronicle.cli.export_dialogs")
     @patch("cursor_chronicle.cli.show_export_summary")
     def test_with_custom_path(self, mock_summary, mock_export):
-        mock_export.return_value = {"total_dialogs": 1, "exported": 1, "errors": 0,
-                                    "skipped": 0, "export_path": "/custom/path", "verbosity": 3}
+        mock_export.return_value = {
+            "total_dialogs": 1,
+            "exported": 1,
+            "errors": 0,
+            "skipped": 0,
+            "export_path": "/custom/path",
+            "verbosity": 3,
+        }
         mock_summary.return_value = "Summary"
         args = MagicMock()
         args.export_path = "/custom/path"
@@ -202,28 +217,40 @@ class TestShowDialog(unittest.TestCase):
 
     def test_project_not_found(self):
         viewer = MagicMock()
-        viewer.get_projects.return_value = [{"project_name": "other-project", "composers": []}]
+        viewer.get_projects.return_value = [
+            {"project_name": "other-project", "composers": []}
+        ]
         output = self._capture_output(show_dialog, viewer, project_name="nonexistent")
         self.assertIn("not found", output)
 
     def test_dialog_not_found(self):
         viewer = MagicMock()
         viewer.get_projects.return_value = [
-            {"project_name": "test-project", "composers": [{"name": "other-dialog", "composerId": "123"}]}
+            {
+                "project_name": "test-project",
+                "composers": [{"name": "other-dialog", "composerId": "123"}],
+            }
         ]
-        output = self._capture_output(show_dialog, viewer, project_name="test-project", dialog_name="nonexistent")
+        output = self._capture_output(
+            show_dialog, viewer, project_name="test-project", dialog_name="nonexistent"
+        )
         self.assertIn("not found", output)
 
     def test_no_composers(self):
         viewer = MagicMock()
-        viewer.get_projects.return_value = [{"project_name": "empty-project", "composers": []}]
+        viewer.get_projects.return_value = [
+            {"project_name": "empty-project", "composers": []}
+        ]
         output = self._capture_output(show_dialog, viewer, project_name="empty-project")
         self.assertIn("No dialogs found", output)
 
     def test_no_composer_id(self):
         viewer = MagicMock()
         viewer.get_projects.return_value = [
-            {"project_name": "test-project", "composers": [{"name": "test-dialog", "lastUpdatedAt": 1000}]}
+            {
+                "project_name": "test-project",
+                "composers": [{"name": "test-dialog", "lastUpdatedAt": 1000}],
+            }
         ]
         output = self._capture_output(show_dialog, viewer, project_name="test-project")
         self.assertIn("ID not found", output)
@@ -233,7 +260,16 @@ class TestShowDialog(unittest.TestCase):
         mock_get_messages.return_value = []
         viewer = MagicMock()
         viewer.get_projects.return_value = [
-            {"project_name": "test-project", "composers": [{"name": "test-dialog", "composerId": "abc123", "lastUpdatedAt": 1000}]}
+            {
+                "project_name": "test-project",
+                "composers": [
+                    {
+                        "name": "test-dialog",
+                        "composerId": "abc123",
+                        "lastUpdatedAt": 1000,
+                    }
+                ],
+            }
         ]
         output = self._capture_output(show_dialog, viewer, project_name="test-project")
         self.assertIn("No messages found", output)
@@ -243,7 +279,16 @@ class TestShowDialog(unittest.TestCase):
         mock_get_messages.side_effect = Exception("Database error")
         viewer = MagicMock()
         viewer.get_projects.return_value = [
-            {"project_name": "test-project", "composers": [{"name": "test-dialog", "composerId": "abc123", "lastUpdatedAt": 1000}]}
+            {
+                "project_name": "test-project",
+                "composers": [
+                    {
+                        "name": "test-dialog",
+                        "composerId": "abc123",
+                        "lastUpdatedAt": 1000,
+                    }
+                ],
+            }
         ]
         output = self._capture_output(show_dialog, viewer, project_name="test-project")
         self.assertIn("Error reading dialog", output)
@@ -255,7 +300,16 @@ class TestShowDialog(unittest.TestCase):
         mock_format.return_value = "Formatted dialog output"
         viewer = MagicMock()
         viewer.get_projects.return_value = [
-            {"project_name": "test-project", "composers": [{"name": "test-dialog", "composerId": "abc123", "lastUpdatedAt": 1000}]}
+            {
+                "project_name": "test-project",
+                "composers": [
+                    {
+                        "name": "test-dialog",
+                        "composerId": "abc123",
+                        "lastUpdatedAt": 1000,
+                    }
+                ],
+            }
         ]
         output = self._capture_output(show_dialog, viewer, project_name="test-project")
         self.assertIn("Formatted dialog output", output)
@@ -267,9 +321,20 @@ class TestShowDialog(unittest.TestCase):
         mock_format.return_value = "Output"
         viewer = MagicMock()
         viewer.get_projects.return_value = [
-            {"project_name": "test-project", "composers": [{"name": "My Long Dialog Name", "composerId": "abc", "lastUpdatedAt": 1000}]}
+            {
+                "project_name": "test-project",
+                "composers": [
+                    {
+                        "name": "My Long Dialog Name",
+                        "composerId": "abc",
+                        "lastUpdatedAt": 1000,
+                    }
+                ],
+            }
         ]
-        self._capture_output(show_dialog, viewer, project_name="test", dialog_name="long dialog")
+        self._capture_output(
+            show_dialog, viewer, project_name="test", dialog_name="long dialog"
+        )
         mock_get_messages.assert_called_once()
 
 

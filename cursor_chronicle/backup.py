@@ -93,11 +93,13 @@ def _build_backup_metadata(files: List[Path], base_path: Path) -> Dict:
             rel = str(f.relative_to(base_path))
         except ValueError:
             rel = str(f)
-        file_entries.append({
-            "path": rel,
-            "size": size,
-            "modified": datetime.fromtimestamp(f.stat().st_mtime).isoformat(),
-        })
+        file_entries.append(
+            {
+                "path": rel,
+                "size": size,
+                "modified": datetime.fromtimestamp(f.stat().st_mtime).isoformat(),
+            }
+        )
 
     return {
         "created_at": datetime.now().isoformat(),
@@ -131,8 +133,11 @@ def create_backup(
     base_path, files = _collect_cursor_files()
     if not files:
         return {
-            "backup_path": None, "total_files": 0, "total_size": 0,
-            "compressed_size": 0, "compression_ratio": 0.0,
+            "backup_path": None,
+            "total_files": 0,
+            "total_size": 0,
+            "compressed_size": 0,
+            "compression_ratio": 0.0,
             "created_at": datetime.now().isoformat(),
             "error": "No Cursor files found to backup.",
         }
@@ -158,18 +163,23 @@ def create_backup(
             percent = int(min(bytes_processed, total_size) * 100 / total_size)
         else:
             percent = 100
-        if not force and (bytes_processed - last_reported_bytes) < PROGRESS_UPDATE_INTERVAL_BYTES:
+        if (
+            not force
+            and (bytes_processed - last_reported_bytes) < PROGRESS_UPDATE_INTERVAL_BYTES
+        ):
             return
         last_reported_bytes = bytes_processed
-        progress_callback({
-            "current": current,
-            "total": total_files,
-            "file_path": file_path,
-            "percent": percent,
-            "bytes_processed": bytes_processed,
-            "bytes_total": total_size,
-            "phase": "compressing",
-        })
+        progress_callback(
+            {
+                "current": current,
+                "total": total_files,
+                "file_path": file_path,
+                "percent": percent,
+                "bytes_processed": bytes_processed,
+                "bytes_total": total_size,
+                "phase": "compressing",
+            }
+        )
 
     class _ProgressReader:
         def __init__(self, source_file, on_read):
@@ -184,7 +194,9 @@ def create_backup(
 
     try:
         with tarfile.open(str(tmp_backup_path), "w:xz", preset=LZMA_PRESET) as tar:
-            meta_bytes = json.dumps(metadata, indent=2, ensure_ascii=False).encode("utf-8")
+            meta_bytes = json.dumps(metadata, indent=2, ensure_ascii=False).encode(
+                "utf-8"
+            )
             meta_info = tarfile.TarInfo(name=BACKUP_META_FILE)
             meta_info.size = len(meta_bytes)
             tar.addfile(meta_info, io.BytesIO(meta_bytes))
@@ -207,7 +219,9 @@ def create_backup(
                         fileobj=src_file,
                     )
                     src_file.seek(0)
-                    tar.addfile(tarinfo=tar_info, fileobj=_ProgressReader(src_file, _on_read))
+                    tar.addfile(
+                        tarinfo=tar_info, fileobj=_ProgressReader(src_file, _on_read)
+                    )
 
                 # Force a callback at file boundary for many small files.
                 _report_progress(current=idx, file_path=rel_path, force=True)
@@ -222,9 +236,12 @@ def create_backup(
     ratio = ((1 - compressed_size / total_size) * 100) if total_size > 0 else 0.0
 
     return {
-        "backup_path": str(backup_path), "total_files": total_files,
-        "total_size": total_size, "compressed_size": compressed_size,
-        "compression_ratio": round(ratio, 1), "created_at": metadata["created_at"],
+        "backup_path": str(backup_path),
+        "total_files": total_files,
+        "total_size": total_size,
+        "compressed_size": compressed_size,
+        "compression_ratio": round(ratio, 1),
+        "created_at": metadata["created_at"],
     }
 
 
@@ -240,15 +257,20 @@ def list_backups(backup_dir: Optional[Path] = None) -> List[Dict]:
     for entry in backup_dir.iterdir():
         if not entry.is_file():
             continue
-        if not entry.name.startswith(BACKUP_PREFIX) or not entry.name.endswith(BACKUP_SUFFIX):
+        if not entry.name.startswith(BACKUP_PREFIX) or not entry.name.endswith(
+            BACKUP_SUFFIX
+        ):
             continue
 
         backup_info = {
-            "filename": entry.name, "path": str(entry),
-            "size": entry.stat().st_size, "created_at": None, "metadata": None,
+            "filename": entry.name,
+            "path": str(entry),
+            "size": entry.stat().st_size,
+            "created_at": None,
+            "metadata": None,
         }
 
-        name_part = entry.name[len(BACKUP_PREFIX):-len(BACKUP_SUFFIX)]
+        name_part = entry.name[len(BACKUP_PREFIX) : -len(BACKUP_SUFFIX)]
         try:
             dt = datetime.strptime(name_part, "%Y-%m-%d_%H-%M-%S")
             backup_info["created_at"] = dt.isoformat()
@@ -339,8 +361,10 @@ def restore_backup(
 ) -> Dict:
     """Restore Cursor database files from a backup archive."""
     result = {
-        "restored_files": 0, "pre_restore_backup": None,
-        "errors": [], "success": False,
+        "restored_files": 0,
+        "pre_restore_backup": None,
+        "errors": [],
+        "success": False,
     }
 
     is_valid, message, metadata = _validate_backup(backup_path)
@@ -349,7 +373,11 @@ def restore_backup(
         return result
 
     cursor_config_path = get_cursor_paths()[0]
-    target_base = Path(metadata["cursor_base_path"]) if metadata and "cursor_base_path" in metadata else cursor_config_path
+    target_base = (
+        Path(metadata["cursor_base_path"])
+        if metadata and "cursor_base_path" in metadata
+        else cursor_config_path
+    )
 
     if create_pre_restore_backup:
         try:
@@ -357,13 +385,16 @@ def restore_backup(
             if pre_backup.get("backup_path"):
                 result["pre_restore_backup"] = pre_backup["backup_path"]
         except Exception as e:
-            result["errors"].append(f"Warning: Could not create pre-restore backup: {e}")
+            result["errors"].append(
+                f"Warning: Could not create pre-restore backup: {e}"
+            )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             with tarfile.open(str(backup_path), "r:xz") as tar:
                 members = [
-                    m for m in tar.getmembers()
+                    m
+                    for m in tar.getmembers()
                     if m.name != BACKUP_META_FILE and not m.name.startswith("..")
                 ]
                 total = len(members)
@@ -383,10 +414,14 @@ def restore_backup(
 
                     if progress_callback:
                         percent = int(idx * 100 / total) if total > 0 else 0
-                        progress_callback({
-                            "current": idx, "total": total,
-                            "file_path": member.name, "percent": percent,
-                        })
+                        progress_callback(
+                            {
+                                "current": idx,
+                                "total": total,
+                                "file_path": member.name,
+                                "percent": percent,
+                            }
+                        )
 
         except (tarfile.TarError, lzma.LZMAError, OSError) as e:
             result["errors"].append(f"Error during extraction: {e}")

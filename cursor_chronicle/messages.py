@@ -5,10 +5,8 @@ Message extraction and processing from Cursor database.
 import base64
 import json
 import sqlite3
-from typing import Dict, List
-
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 from .utils import get_cursor_paths
 
@@ -112,7 +110,9 @@ def get_dialog_messages(composer_id: str, db_path: Optional[Path] = None) -> Lis
                 )
                 if is_thought_bubble:
                     message["is_thought"] = True
-                    message["thinking_duration"] = bubble_data.get("thinkingDurationMs", 0)
+                    message["thinking_duration"] = bubble_data.get(
+                        "thinkingDurationMs", 0
+                    )
                     thinking_content = _extract_thinking_content(thinking_data)
                     message["thinking_content"] = thinking_content
 
@@ -164,12 +164,14 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
             or current_file_data.get("file")
         )
         if file_path:
-            attached_files.append({
-                "type": "active",
-                "path": file_path,
-                "line": current_file_data.get("line"),
-                "preview": current_file_data.get("preview"),
-            })
+            attached_files.append(
+                {
+                    "type": "active",
+                    "path": file_path,
+                    "line": current_file_data.get("line"),
+                    "preview": current_file_data.get("preview"),
+                }
+            )
 
     # 2. Project layouts
     project_layouts = bubble_data.get("projectLayouts", [])
@@ -194,12 +196,14 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
         if isinstance(chunk, dict):
             file_path = chunk.get("relativeWorkspacePath")
             if file_path:
-                attached_files.append({
-                    "type": "context",
-                    "path": file_path,
-                    "content": chunk.get("contents", ""),
-                    "line_range": chunk.get("lineRange"),
-                })
+                attached_files.append(
+                    {
+                        "type": "context",
+                        "path": file_path,
+                        "content": chunk.get("contents", ""),
+                        "line_range": chunk.get("lineRange"),
+                    }
+                )
 
     # 4. Relevant files
     relevant_files = bubble_data.get("relevantFiles", [])
@@ -217,12 +221,14 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
         if isinstance(chunk, dict):
             file_path = chunk.get("path") or chunk.get("uri")
             if file_path:
-                attached_files.append({
-                    "type": "selected",
-                    "path": file_path,
-                    "content": chunk.get("content", ""),
-                    "selection": chunk.get("selection"),
-                })
+                attached_files.append(
+                    {
+                        "type": "selected",
+                        "path": file_path,
+                        "content": chunk.get("content", ""),
+                        "selection": chunk.get("selection"),
+                    }
+                )
 
     # 6. File selections from context
     context = bubble_data.get("context", {})
@@ -232,11 +238,13 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
             if isinstance(selection, dict):
                 file_path = selection.get("path") or selection.get("uri")
                 if file_path:
-                    attached_files.append({
-                        "type": "selected_context",
-                        "path": file_path,
-                        "selection": selection.get("selection"),
-                    })
+                    attached_files.append(
+                        {
+                            "type": "selected_context",
+                            "path": file_path,
+                            "selection": selection.get("selection"),
+                        }
+                    )
 
     return attached_files
 

@@ -38,7 +38,9 @@ Examples:
 
     parser.add_argument("query", nargs="?", help="Search query")
     parser.add_argument("--project", "-p", help="Filter by project name")
-    parser.add_argument("--case-sensitive", "-c", action="store_true", help="Case sensitive")
+    parser.add_argument(
+        "--case-sensitive", "-c", action="store_true", help="Case sensitive"
+    )
     parser.add_argument(
         "--limit",
         "-l",
@@ -46,15 +48,21 @@ Examples:
         default=50,
         help="Max results (default: 50)",
     )
-    parser.add_argument("--show-context", "-x", action="store_true", help="Show surrounding messages")
+    parser.add_argument(
+        "--show-context", "-x", action="store_true", help="Show surrounding messages"
+    )
     parser.add_argument(
         "--context-size",
         type=parse_positive_int,
         default=3,
         help="Context messages (default: 3)",
     )
-    parser.add_argument("--show-dialog", "-d", metavar="COMPOSER_ID", help="Show full dialog")
-    parser.add_argument("--list-dialogs", action="store_true", help="List dialogs with match counts")
+    parser.add_argument(
+        "--show-dialog", "-d", metavar="COMPOSER_ID", help="Show full dialog"
+    )
+    parser.add_argument(
+        "--list-dialogs", action="store_true", help="List dialogs with match counts"
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Show progress")
 
     return parser
@@ -119,8 +127,14 @@ def main():
 
         print(f"🔍 Dialogs containing '{args.query}':")
         print("=" * 60)
-        for dialog in sorted(dialogs.values(), key=lambda x: x["last_updated"], reverse=True):
-            date = datetime.fromtimestamp(dialog["last_updated"] / 1000) if dialog["last_updated"] else None
+        for dialog in sorted(
+            dialogs.values(), key=lambda x: x["last_updated"], reverse=True
+        ):
+            date = (
+                datetime.fromtimestamp(dialog["last_updated"] / 1000)
+                if dialog["last_updated"]
+                else None
+            )
             date_str = date.strftime("%Y-%m-%d") if date else "unknown"
             print(f"📁 {dialog['project']} / {dialog['name']}")
             print(f"   Matches: {dialog['count']} | Date: {date_str}")

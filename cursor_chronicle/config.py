@@ -11,15 +11,14 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-
 # Default config directory
 DEFAULT_CONFIG_DIR = Path.home() / ".cursor-chronicle"
 DEFAULT_CONFIG_FILE = DEFAULT_CONFIG_DIR / "config.json"
 
 # Verbosity levels
-VERBOSITY_COMPACT = 1   # Minimal: user/AI text only, tool names without details
+VERBOSITY_COMPACT = 1  # Minimal: user/AI text only, tool names without details
 VERBOSITY_STANDARD = 2  # Standard: includes tool parameters, short outputs
-VERBOSITY_FULL = 3      # Full: complete tool outputs, file contents, thinking
+VERBOSITY_FULL = 3  # Full: complete tool outputs, file contents, thinking
 
 # Default export path (temporary directory for initial testing)
 DEFAULT_EXPORT_PATH = Path(tempfile.gettempdir()) / "cursor-chronicle-export"
