@@ -83,7 +83,9 @@ def format_search_results(
                 if pos != -1:
                     start = max(0, pos - 200)
                     end = min(len(content), pos + len(query) + 200)
-                    highlighted = "..." + highlight_query(content[start:end], query) + "..."
+                    highlighted = (
+                        "..." + highlight_query(content[start:end], query) + "..."
+                    )
                 else:
                     highlighted = highlighted[:500] + "..."
 
@@ -102,7 +104,11 @@ def format_search_results(
                     icon = "👤" if msg["type"] == 1 else "🤖"
                     if msg["is_target"]:
                         icon = "➡️" + icon
-                    text = msg["text"][:200] + "..." if len(msg["text"]) > 200 else msg["text"]
+                    text = (
+                        msg["text"][:200] + "..."
+                        if len(msg["text"]) > 200
+                        else msg["text"]
+                    )
                     output.append(f"      {icon}: {text}")
             output.append("")
 

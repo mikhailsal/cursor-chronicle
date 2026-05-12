@@ -2,12 +2,14 @@
 Shared utilities and constants for Cursor Chronicle.
 """
 
+import json
 import os
 import signal
-import urllib.parse
+import sqlite3
 import sys
+import urllib.parse
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 # Handle broken pipe gracefully
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -59,6 +61,8 @@ def parse_workspace_storage_meta(workspace_data: Dict) -> Tuple[str, str]:
         return format_workspace_project_display_name(raw_basename), folder_path
 
     return (effective_uri, effective_uri)
+
+
 # Absolute path to Cursor's per-user "User" directory (contains workspaceStorage, etc.).
 # When set (non-empty after stripping), overrides OS-specific defaults below.
 CURSOR_USER_DIR_ENV = "CURSOR_CHRONICLE_CURSOR_USER_DIR"
@@ -101,6 +105,48 @@ def get_cursor_paths() -> tuple:
     workspace_storage_path = cursor_config_path / "workspaceStorage"
     global_storage_path = cursor_config_path / "globalStorage" / "state.vscdb"
     return cursor_config_path, workspace_storage_path, global_storage_path
+
+
+def _parse_composer_workspace_identifier(comp: Dict) -> Tuple[str, str]:
+    """
+    Extract (project_name, folder_path) from a Cursor 3.0+ composer header's
+    ``workspaceIdentifier`` field.
+    """
+    ws = comp.get("workspaceIdentifier") or {}
+    uri_obj = ws.get("uri") or {}
+    folder_path = (
+        uri_obj.get("fsPath") or uri_obj.get("path") or uri_obj.get("external", "")
+    )
+    if isinstance(folder_path, str) and folder_path.startswith("file://"):
+        folder_path = urllib.parse.unquote(folder_path[7:])
+    if not folder_path:
+        folder_path = "unknown"
+    project_name = os.path.basename(folder_path) or folder_path
+    return project_name, folder_path
+
+
+def load_global_composer_headers(global_storage_path: Path) -> List[Dict]:
+    """
+    Load composer headers from the global ``composer.composerHeaders`` key
+    introduced in Cursor 3.0+ (April 2026).
+
+    Returns an empty list when the key is absent (pre-3.0 installs).
+    """
+    if not global_storage_path.exists():
+        return []
+    try:
+        conn = sqlite3.connect(global_storage_path)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT value FROM ItemTable WHERE key = 'composer.composerHeaders'"
+        )
+        result = cur.fetchone()
+        conn.close()
+        if result:
+            return json.loads(result[0]).get("allComposers", [])
+    except Exception:
+        pass
+    return []
 
 
 # Tool type mapping for display

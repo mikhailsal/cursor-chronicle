@@ -174,6 +174,7 @@ class TestCLIBackupArgs(unittest.TestCase):
 
     def setUp(self):
         from cursor_chronicle.cli import create_parser
+
         self.parser = create_parser()
 
     def test_backup_arg(self):
@@ -215,20 +216,24 @@ class TestConfigBackupPath(unittest.TestCase):
 
     def test_config_has_backup_path(self):
         from cursor_chronicle.config import DEFAULT_CONFIG
+
         self.assertIn("backup_path", DEFAULT_CONFIG)
 
     def test_get_backup_path_default(self):
         from cursor_chronicle.config import DEFAULT_BACKUP_PATH, get_backup_path
+
         result = get_backup_path({})
         self.assertEqual(result, DEFAULT_BACKUP_PATH)
 
     def test_get_backup_path_from_config(self):
         from cursor_chronicle.config import get_backup_path
+
         result = get_backup_path({"backup_path": "/my/backups"})
         self.assertEqual(result, Path("/my/backups"))
 
     def test_load_config_includes_backup_path(self):
         from cursor_chronicle.config import load_config
+
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.json"
             config_data = {"backup_path": "/custom/backups"}

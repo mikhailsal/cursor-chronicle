@@ -30,7 +30,12 @@ class TestExtractFilesFromLayout(unittest.TestCase):
             "README.md": None,
         }
         files = cursor_chronicle.extract_files_from_layout(layout)
-        expected_files = ["src/main.py", "src/utils.py", "src/tests/test_main.py", "README.md"]
+        expected_files = [
+            "src/main.py",
+            "src/utils.py",
+            "src/tests/test_main.py",
+            "README.md",
+        ]
         files.sort()
         expected_files.sort()
         self.assertEqual(files, expected_files)
@@ -106,7 +111,11 @@ class TestExtractAttachedFiles(unittest.TestCase):
         """Test extracting codebase context chunks."""
         bubble_data = {
             "codebaseContextChunks": [
-                {"relativeWorkspacePath": "src/utils.py", "contents": "def helper():", "lineRange": "10-20"}
+                {
+                    "relativeWorkspacePath": "src/utils.py",
+                    "contents": "def helper():",
+                    "lineRange": "10-20",
+                }
             ]
         }
         result = cursor_chronicle.extract_attached_files(bubble_data)
@@ -118,7 +127,10 @@ class TestExtractAttachedFiles(unittest.TestCase):
     def test_extract_attached_files_relevant_files_dict(self):
         """Test extracting relevant files as dict."""
         bubble_data = {
-            "relevantFiles": [{"path": "/path/to/file1.py"}, {"uri": "/path/to/file2.py"}]
+            "relevantFiles": [
+                {"path": "/path/to/file1.py"},
+                {"uri": "/path/to/file2.py"},
+            ]
         }
         result = cursor_chronicle.extract_attached_files(bubble_data)
         self.assertEqual(len(result), 2)
@@ -137,7 +149,11 @@ class TestExtractAttachedFiles(unittest.TestCase):
         """Test extracting attached code chunks."""
         bubble_data = {
             "attachedCodeChunks": [
-                {"path": "/path/to/file.py", "content": "def test():", "selection": "1-10"}
+                {
+                    "path": "/path/to/file.py",
+                    "content": "def test():",
+                    "selection": "1-10",
+                }
             ]
         }
         result = cursor_chronicle.extract_attached_files(bubble_data)
@@ -148,7 +164,9 @@ class TestExtractAttachedFiles(unittest.TestCase):
     def test_extract_attached_files_context_file_selections(self):
         """Test extracting file selections from context."""
         bubble_data = {
-            "context": {"fileSelections": [{"path": "/path/to/file.py", "selection": "1-10"}]}
+            "context": {
+                "fileSelections": [{"path": "/path/to/file.py", "selection": "1-10"}]
+            }
         }
         result = cursor_chronicle.extract_attached_files(bubble_data)
         self.assertEqual(len(result), 1)
@@ -160,16 +178,18 @@ class TestGetDialogMessages(unittest.TestCase):
 
     def test_get_dialog_messages_thinking_bubble(self):
         """Test thinking bubble detection."""
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
         composer_data = {"fullConversationHeadersOnly": [{"bubbleId": "bubble1"}]}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("composerData:test123", json.dumps(composer_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("composerData:test123", json.dumps(composer_data)),
+        )
 
         bubble_data = {
             "bubbleId": "bubble1",
@@ -179,14 +199,18 @@ class TestGetDialogMessages(unittest.TestCase):
             "thinkingDurationMs": 3000,
             "thinking": {"content": "Thinking about the problem..."},
         }
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:test123:bubble1", json.dumps(bubble_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("bubbleId:test123:bubble1", json.dumps(bubble_data)),
+        )
 
         conn.commit()
         conn.close()
 
         try:
-            messages = cursor_chronicle.get_dialog_messages("test123", db_path=Path(db_path))
+            messages = cursor_chronicle.get_dialog_messages(
+                "test123", db_path=Path(db_path)
+            )
             self.assertEqual(len(messages), 1)
             self.assertTrue(messages[0]["is_thought"])
             self.assertEqual(messages[0]["thinking_duration"], 3000)
@@ -196,16 +220,18 @@ class TestGetDialogMessages(unittest.TestCase):
 
     def test_get_dialog_messages_thinking_string(self):
         """Test thinking as string."""
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
         composer_data = {"fullConversationHeadersOnly": [{"bubbleId": "bubble1"}]}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("composerData:test123", json.dumps(composer_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("composerData:test123", json.dumps(composer_data)),
+        )
 
         bubble_data = {
             "bubbleId": "bubble1",
@@ -213,14 +239,18 @@ class TestGetDialogMessages(unittest.TestCase):
             "text": "",
             "thinking": "Direct thinking string" + " " * 100,
         }
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:test123:bubble1", json.dumps(bubble_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("bubbleId:test123:bubble1", json.dumps(bubble_data)),
+        )
 
         conn.commit()
         conn.close()
 
         try:
-            messages = cursor_chronicle.get_dialog_messages("test123", db_path=Path(db_path))
+            messages = cursor_chronicle.get_dialog_messages(
+                "test123", db_path=Path(db_path)
+            )
             self.assertEqual(len(messages), 1)
             self.assertTrue(messages[0]["is_thought"])
             self.assertIn("Direct thinking string", messages[0]["thinking_content"])
@@ -229,63 +259,78 @@ class TestGetDialogMessages(unittest.TestCase):
 
     def test_get_dialog_messages_no_full_conversation(self):
         """Test when no fullConversationHeadersOnly exists."""
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
         composer_data = {"padding": "x" * 100}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("composerData:test123", json.dumps(composer_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("composerData:test123", json.dumps(composer_data)),
+        )
 
         bubble_data = {"bubbleId": "bubble1", "type": 1, "text": "Hello " + "x" * 100}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:test123:bubble1", json.dumps(bubble_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("bubbleId:test123:bubble1", json.dumps(bubble_data)),
+        )
 
         conn.commit()
         conn.close()
 
         try:
-            messages = cursor_chronicle.get_dialog_messages("test123", db_path=Path(db_path))
+            messages = cursor_chronicle.get_dialog_messages(
+                "test123", db_path=Path(db_path)
+            )
             self.assertEqual(len(messages), 1)
         finally:
             os.unlink(db_path)
 
     def test_get_dialog_messages_json_decode_error(self):
         """Test handling of JSON decode error in bubble."""
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:test123:bubble1", "invalid json " + "x" * 100))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("bubbleId:test123:bubble1", "invalid json " + "x" * 100),
+        )
 
         conn.commit()
         conn.close()
 
         try:
-            messages = cursor_chronicle.get_dialog_messages("test123", db_path=Path(db_path))
+            messages = cursor_chronicle.get_dialog_messages(
+                "test123", db_path=Path(db_path)
+            )
             self.assertEqual(len(messages), 0)
         finally:
             os.unlink(db_path)
 
     def test_thinking_bubble_base64_signature(self):
         """Test thinking bubble with base64-like signature is handled."""
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
-        composer_data = {"fullConversationHeadersOnly": [{"bubbleId": "bubble1"}], "padding": "x" * 100}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("composerData:test123", json.dumps(composer_data)))
+        composer_data = {
+            "fullConversationHeadersOnly": [{"bubbleId": "bubble1"}],
+            "padding": "x" * 100,
+        }
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("composerData:test123", json.dumps(composer_data)),
+        )
 
         bubble_data = {
             "bubbleId": "bubble1",
@@ -294,14 +339,18 @@ class TestGetDialogMessages(unittest.TestCase):
             "isThought": True,
             "thinking": {"signature": "AVSoXOInvalidBase64Data" + "x" * 100},
         }
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:test123:bubble1", json.dumps(bubble_data)))
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("bubbleId:test123:bubble1", json.dumps(bubble_data)),
+        )
 
         conn.commit()
         conn.close()
 
         try:
-            messages = cursor_chronicle.get_dialog_messages("test123", db_path=Path(db_path))
+            messages = cursor_chronicle.get_dialog_messages(
+                "test123", db_path=Path(db_path)
+            )
             self.assertEqual(len(messages), 1)
             self.assertTrue(messages[0]["is_thought"])
         finally:

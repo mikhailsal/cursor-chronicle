@@ -46,16 +46,16 @@ def sanitize_filename(name: str, max_length: int = 80) -> str:
     if not name or not name.strip():
         return "Untitled"
 
-    sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', name)
-    sanitized = re.sub(r'\s+', '_', sanitized)
-    sanitized = re.sub(r'_+', '_', sanitized)
-    sanitized = sanitized.strip('_. ')
+    sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    sanitized = re.sub(r"\s+", "_", sanitized)
+    sanitized = re.sub(r"_+", "_", sanitized)
+    sanitized = sanitized.strip("_. ")
 
     if not sanitized:
         return "Untitled"
 
     if len(sanitized) > max_length:
-        sanitized = sanitized[:max_length].rstrip('_')
+        sanitized = sanitized[:max_length].rstrip("_")
 
     return sanitized
 
@@ -73,10 +73,10 @@ def sanitize_project_name(name: str) -> str:
     if not name or not name.strip():
         return "Unknown_Project"
 
-    sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', name)
-    sanitized = re.sub(r'\s+', '_', sanitized)
-    sanitized = re.sub(r'_+', '_', sanitized)
-    sanitized = sanitized.strip('_. ')
+    sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+    sanitized = re.sub(r"\s+", "_", sanitized)
+    sanitized = re.sub(r"_+", "_", sanitized)
+    sanitized = sanitized.strip("_. ")
 
     return sanitized if sanitized else "Unknown_Project"
 
@@ -199,13 +199,17 @@ def export_dialogs(
         except Exception:
             stats["errors"] += 1
             status = "error"
-            _notify_progress(progress_callback, idx, total, project_name, dialog_name, status)
+            _notify_progress(
+                progress_callback, idx, total, project_name, dialog_name, status
+            )
             continue
 
         if not messages:
             stats["skipped"] += 1
             status = "skipped"
-            _notify_progress(progress_callback, idx, total, project_name, dialog_name, status)
+            _notify_progress(
+                progress_callback, idx, total, project_name, dialog_name, status
+            )
             continue
 
         # Build paths
@@ -239,7 +243,9 @@ def export_dialogs(
             stats["errors"] += 1
             status = "error"
 
-        _notify_progress(progress_callback, idx, total, project_name, dialog_name, status)
+        _notify_progress(
+            progress_callback, idx, total, project_name, dialog_name, status
+        )
 
     return stats
 
@@ -256,14 +262,16 @@ def _notify_progress(
     if callback is None:
         return
     percent = int(current * 100 / total) if total > 0 else 0
-    callback({
-        "current": current,
-        "total": total,
-        "project_name": project_name,
-        "dialog_name": dialog_name,
-        "status": status,
-        "percent": percent,
-    })
+    callback(
+        {
+            "current": current,
+            "total": total,
+            "project_name": project_name,
+            "dialog_name": dialog_name,
+            "status": status,
+            "percent": percent,
+        }
+    )
 
 
 def show_export_summary(stats: Dict) -> str:
@@ -282,14 +290,16 @@ def show_export_summary(stats: Dict) -> str:
     lines.append("=" * 60)
     lines.append("")
     lines.append(f"  Export path:    {stats['export_path']}")
-    lines.append(f"  Verbosity:     {stats['verbosity']} "
-                 f"({'compact' if stats['verbosity'] == 1 else 'standard' if stats['verbosity'] == 2 else 'full'})")
+    lines.append(
+        f"  Verbosity:     {stats['verbosity']} "
+        f"({'compact' if stats['verbosity'] == 1 else 'standard' if stats['verbosity'] == 2 else 'full'})"
+    )
     lines.append("")
     lines.append(f"  Total dialogs: {stats['total_dialogs']}")
     lines.append(f"  ✅ Exported:    {stats['exported']}")
-    if stats['skipped']:
+    if stats["skipped"]:
         lines.append(f"  ⏭️  Skipped:     {stats['skipped']} (empty)")
-    if stats['errors']:
+    if stats["errors"]:
         lines.append(f"  ❌ Errors:      {stats['errors']}")
     lines.append("")
     lines.append("=" * 60)

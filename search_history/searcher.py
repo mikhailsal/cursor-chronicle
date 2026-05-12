@@ -9,8 +9,12 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from cursor_chronicle.utils import parse_workspace_storage_meta
-from cursor_chronicle.utils import get_cursor_paths
+from cursor_chronicle.utils import (
+    _parse_composer_workspace_identifier,
+    get_cursor_paths,
+    load_global_composer_headers,
+    parse_workspace_storage_meta,
+)
 
 # Handle broken pipe gracefully
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -27,47 +31,67 @@ class CursorHistorySearch:
         ) = get_cursor_paths()
 
     def get_all_composers(self) -> List[Dict]:
-        """Get all composers from all workspaces with project info."""
+        """Get all composers from all workspaces with project info.
+
+        Reads from two sources and merges, deduplicating by composerId:
+        1. Global ``composer.composerHeaders`` (Cursor 3.0+, April 2026).
+        2. Per-workspace ``composer.composerData`` (legacy, pre-3.0).
+        """
         composers = []
+        seen_ids: set = set()
 
-        if not self.workspace_storage_path.exists():
-            return composers
+        # --- Cursor 3.0+: global composerHeaders ---
+        for comp in load_global_composer_headers(self.global_storage_path):
+            project_name, folder_path = _parse_composer_workspace_identifier(comp)
+            ws = comp.get("workspaceIdentifier") or {}
+            comp["_project_name"] = project_name
+            comp["_folder_path"] = folder_path
+            comp["_workspace_id"] = ws.get("id", "")
+            seen_ids.add(comp.get("composerId"))
+            composers.append(comp)
 
-        for workspace_dir in self.workspace_storage_path.iterdir():
-            if not workspace_dir.is_dir():
-                continue
+        # --- Legacy: per-workspace composerData ---
+        if self.workspace_storage_path.exists():
+            for workspace_dir in self.workspace_storage_path.iterdir():
+                if not workspace_dir.is_dir():
+                    continue
 
-            workspace_json = workspace_dir / "workspace.json"
-            state_db = workspace_dir / "state.vscdb"
+                workspace_json = workspace_dir / "workspace.json"
+                state_db = workspace_dir / "state.vscdb"
 
-            if not workspace_json.exists() or not state_db.exists():
-                continue
+                if not workspace_json.exists() or not state_db.exists():
+                    continue
 
-            try:
-                with open(workspace_json, "r") as f:
-                    workspace_data = json.load(f)
+                try:
+                    with open(workspace_json, "r") as f:
+                        workspace_data = json.load(f)
 
-                project_name, folder_path = parse_workspace_storage_meta(workspace_data)
+                    project_name, folder_path = parse_workspace_storage_meta(
+                        workspace_data
+                    )
 
-                conn = sqlite3.connect(state_db)
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
-                )
-                result = cursor.fetchone()
+                    conn = sqlite3.connect(state_db)
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
+                    )
+                    result = cursor.fetchone()
 
-                if result:
-                    composer_data = json.loads(result[0])
-                    for comp in composer_data.get("allComposers", []):
-                        comp["_project_name"] = project_name
-                        comp["_folder_path"] = folder_path
-                        comp["_workspace_id"] = workspace_dir.name
-                        composers.append(comp)
+                    if result:
+                        composer_data = json.loads(result[0])
+                        for comp in composer_data.get("allComposers", []):
+                            if comp.get("composerId") in seen_ids:
+                                continue
+                            comp["_project_name"] = project_name
+                            comp["_folder_path"] = folder_path
+                            comp["_workspace_id"] = workspace_dir.name
+                            seen_ids.add(comp.get("composerId"))
+                            composers.append(comp)
 
-                conn.close()
+                    conn.close()
 
-            except Exception:
-                continue
+                except Exception:
+                    continue
 
         return composers
 
@@ -81,11 +105,13 @@ class CursorHistorySearch:
 
         text = bubble_data.get("text", "")
         if text and pattern.search(text):
-            matches.append({
-                "field": "text",
-                "content": text,
-                "type": bubble_data.get("type"),
-            })
+            matches.append(
+                {
+                    "field": "text",
+                    "content": text,
+                    "type": bubble_data.get("type"),
+                }
+            )
 
         tool_data = bubble_data.get("toolFormerData", {})
         if tool_data:
@@ -93,18 +119,22 @@ class CursorHistorySearch:
             result = tool_data.get("result", "")
 
             if raw_args and pattern.search(raw_args):
-                matches.append({
-                    "field": "tool_args",
-                    "content": raw_args,
-                    "tool_name": tool_data.get("name", "unknown"),
-                })
+                matches.append(
+                    {
+                        "field": "tool_args",
+                        "content": raw_args,
+                        "tool_name": tool_data.get("name", "unknown"),
+                    }
+                )
 
             if result and pattern.search(result):
-                matches.append({
-                    "field": "tool_result",
-                    "content": result,
-                    "tool_name": tool_data.get("name", "unknown"),
-                })
+                matches.append(
+                    {
+                        "field": "tool_result",
+                        "content": result,
+                        "tool_name": tool_data.get("name", "unknown"),
+                    }
+                )
 
         thinking = bubble_data.get("thinking", {})
         if thinking:
@@ -130,7 +160,7 @@ class CursorHistorySearch:
         cursor = conn.cursor()
 
         cursor.execute(
-            """SELECT key, value FROM cursorDiskKV 
+            """SELECT key, value FROM cursorDiskKV
             WHERE key LIKE ? AND LENGTH(value) > 100""",
             (f"bubbleId:{composer_id}:%",),
         )
@@ -140,7 +170,9 @@ class CursorHistorySearch:
         for key, value in results:
             try:
                 bubble_data = json.loads(value)
-                bubble_matches = self.search_in_bubble(bubble_data, query, case_sensitive)
+                bubble_matches = self.search_in_bubble(
+                    bubble_data, query, case_sensitive
+                )
 
                 if bubble_matches:
                     for match in bubble_matches:
@@ -172,12 +204,18 @@ class CursorHistorySearch:
         for c in composers:
             cid = c.get("composerId")
             if cid:
-                if project_filter and project_filter.lower() not in c.get("_project_name", "").lower():
+                if (
+                    project_filter
+                    and project_filter.lower() not in c.get("_project_name", "").lower()
+                ):
                     continue
                 composer_lookup[cid] = c
 
         if verbose:
-            print(f"Searching {len(composer_lookup)} dialogs...", file=__import__('sys').stderr)
+            print(
+                f"Searching {len(composer_lookup)} dialogs...",
+                file=__import__("sys").stderr,
+            )
 
         conn = sqlite3.connect(self.global_storage_path)
         cursor = conn.cursor()
@@ -185,16 +223,14 @@ class CursorHistorySearch:
         flags = 0 if case_sensitive else re.IGNORECASE
         pattern = re.compile(re.escape(query), flags)
 
-        cursor.execute(
-            """SELECT key, value FROM cursorDiskKV 
-            WHERE key LIKE 'bubbleId:%' AND LENGTH(value) > 100"""
-        )
+        cursor.execute("""SELECT key, value FROM cursorDiskKV
+            WHERE key LIKE 'bubbleId:%' AND LENGTH(value) > 100""")
 
         checked = 0
         for key, value in cursor:
             checked += 1
             if checked % 1000 == 0 and verbose:
-                print(f"  Checked {checked} messages...", file=__import__('sys').stderr)
+                print(f"  Checked {checked} messages...", file=__import__("sys").stderr)
 
             parts = key.split(":")
             if len(parts) < 2:
@@ -209,7 +245,9 @@ class CursorHistorySearch:
 
             try:
                 bubble_data = json.loads(value)
-                bubble_matches = self.search_in_bubble(bubble_data, query, case_sensitive)
+                bubble_matches = self.search_in_bubble(
+                    bubble_data, query, case_sensitive
+                )
 
                 if bubble_matches:
                     composer = composer_lookup[composer_id]
@@ -232,7 +270,10 @@ class CursorHistorySearch:
         conn.close()
 
         if verbose:
-            print(f"  Found {len(all_results)} matches in {checked} messages", file=__import__('sys').stderr)
+            print(
+                f"  Found {len(all_results)} matches in {checked} messages",
+                file=__import__("sys").stderr,
+            )
 
         all_results.sort(key=lambda x: x.get("last_updated", 0), reverse=True)
         return all_results[:limit]
@@ -248,7 +289,7 @@ class CursorHistorySearch:
         cursor = conn.cursor()
 
         cursor.execute(
-            """SELECT value FROM cursorDiskKV 
+            """SELECT value FROM cursorDiskKV
             WHERE key = ? AND LENGTH(value) > 100""",
             (f"composerData:{composer_id}",),
         )
@@ -283,7 +324,7 @@ class CursorHistorySearch:
         messages = []
         for bid in context_ids:
             cursor.execute(
-                """SELECT value FROM cursorDiskKV 
+                """SELECT value FROM cursorDiskKV
                 WHERE key = ? AND LENGTH(value) > 100""",
                 (f"bubbleId:{composer_id}:{bid}",),
             )
@@ -291,12 +332,14 @@ class CursorHistorySearch:
             if result:
                 try:
                     bubble_data = json.loads(result[0])
-                    messages.append({
-                        "bubble_id": bid,
-                        "type": bubble_data.get("type"),
-                        "text": bubble_data.get("text", ""),
-                        "is_target": bid == bubble_id,
-                    })
+                    messages.append(
+                        {
+                            "bubble_id": bid,
+                            "type": bubble_data.get("type"),
+                            "text": bubble_data.get("text", ""),
+                            "is_target": bid == bubble_id,
+                        }
+                    )
                 except json.JSONDecodeError:
                     continue
 
@@ -312,7 +355,7 @@ class CursorHistorySearch:
         cursor = conn.cursor()
 
         cursor.execute(
-            """SELECT value FROM cursorDiskKV 
+            """SELECT value FROM cursorDiskKV
             WHERE key = ? AND LENGTH(value) > 100""",
             (f"composerData:{composer_id}",),
         )
@@ -332,8 +375,8 @@ class CursorHistorySearch:
 
         if not ordered_bubble_ids:
             cursor.execute(
-                """SELECT key, value FROM cursorDiskKV 
-                WHERE key LIKE ? AND LENGTH(value) > 100 
+                """SELECT key, value FROM cursorDiskKV
+                WHERE key LIKE ? AND LENGTH(value) > 100
                 ORDER BY rowid""",
                 (f"bubbleId:{composer_id}:%",),
             )
@@ -342,7 +385,7 @@ class CursorHistorySearch:
             results = []
             for bid in ordered_bubble_ids:
                 cursor.execute(
-                    """SELECT key, value FROM cursorDiskKV 
+                    """SELECT key, value FROM cursorDiskKV
                     WHERE key = ? AND LENGTH(value) > 100""",
                     (f"bubbleId:{composer_id}:{bid}",),
                 )
@@ -363,12 +406,14 @@ class CursorHistorySearch:
                 if not text and not tool_data:
                     continue
 
-                messages.append({
-                    "bubble_id": bubble_data.get("bubbleId", ""),
-                    "type": bubble_type,
-                    "text": text,
-                    "tool_data": tool_data,
-                })
+                messages.append(
+                    {
+                        "bubble_id": bubble_data.get("bubbleId", ""),
+                        "type": bubble_type,
+                        "text": text,
+                        "tool_data": tool_data,
+                    }
+                )
 
             except json.JSONDecodeError:
                 continue

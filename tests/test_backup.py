@@ -91,7 +91,9 @@ class TestBuildBackupMetadata(unittest.TestCase):
             f.write_text("data")
 
             meta = _build_backup_metadata([f], base)
-            self.assertEqual(meta["files"][0]["path"], os.path.join("subdir", "state.vscdb"))
+            self.assertEqual(
+                meta["files"][0]["path"], os.path.join("subdir", "state.vscdb")
+            )
 
 
 class TestCollectCursorFiles(unittest.TestCase):
@@ -302,11 +304,15 @@ class TestCreateBackup(unittest.TestCase):
                 Path(path).write_bytes(b"partial")
                 raise RuntimeError("simulated interruption")
 
-            with patch("cursor_chronicle.backup.tarfile.open", side_effect=_failing_open):
+            with patch(
+                "cursor_chronicle.backup.tarfile.open", side_effect=_failing_open
+            ):
                 with self.assertRaises(RuntimeError):
                     create_backup(backup_dir=backup_dir)
 
-            leftovers = [p.name for p in backup_dir.iterdir()] if backup_dir.exists() else []
+            leftovers = (
+                [p.name for p in backup_dir.iterdir()] if backup_dir.exists() else []
+            )
             self.assertFalse(any(name.endswith(".partial") for name in leftovers))
             self.assertFalse(any(name.endswith(BACKUP_SUFFIX) for name in leftovers))
 

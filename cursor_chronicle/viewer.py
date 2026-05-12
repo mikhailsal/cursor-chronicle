@@ -8,14 +8,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .formatters import (
-    format_attached_files as _format_attached_files,
-    format_tool_call as _format_tool_call,
-    format_token_info as _format_token_info,
-    infer_model_from_context as _infer_model_from_context,
-)
+from .formatters import format_attached_files as _format_attached_files
+from .formatters import format_token_info as _format_token_info
+from .formatters import format_tool_call as _format_tool_call
+from .formatters import infer_model_from_context as _infer_model_from_context
 from .messages import get_dialog_messages as _get_dialog_messages
-from .utils import TOOL_TYPES, get_cursor_paths, parse_workspace_storage_meta
+from .utils import (
+    TOOL_TYPES,
+    _parse_composer_workspace_identifier,
+    get_cursor_paths,
+    load_global_composer_headers,
+    parse_workspace_storage_meta,
+)
 
 
 class CursorChatViewer:
@@ -60,58 +64,99 @@ class CursorChatViewer:
         _show_dialog(self, project_name, dialog_name, max_output_lines)
 
     def get_projects(self) -> List[Dict]:
-        """Get list of all projects with their metadata."""
+        """Get list of all projects with their metadata.
+
+        Reads from two sources and merges, deduplicating by composerId:
+        1. Global ``composer.composerHeaders`` (Cursor 3.0+, April 2026).
+        2. Per-workspace ``composer.composerData`` (legacy, pre-3.0).
+        """
         projects = []
+        seen_composer_ids: set = set()
 
-        if not self.workspace_storage_path.exists():
-            return projects
-
-        for workspace_dir in self.workspace_storage_path.iterdir():
-            if not workspace_dir.is_dir():
-                continue
-
-            workspace_json = workspace_dir / "workspace.json"
-            state_db = workspace_dir / "state.vscdb"
-
-            if not workspace_json.exists() or not state_db.exists():
-                continue
-
-            try:
-                with open(workspace_json, "r") as f:
-                    workspace_data = json.load(f)
-
-                project_name, folder_path = parse_workspace_storage_meta(workspace_data)
-
-                conn = sqlite3.connect(state_db)
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
-                )
-                result = cursor.fetchone()
-
-                if result:
-                    composer_data = json.loads(result[0])
-                    composers = composer_data.get("allComposers", [])
-                    latest_dialog = None
-                    if composers:
-                        latest_dialog = max(
-                            composers, key=lambda x: x.get("lastUpdatedAt", 0)
-                        )
-
-                    projects.append({
-                        "workspace_id": workspace_dir.name,
+        # --- Cursor 3.0+: global composerHeaders with workspaceIdentifier ---
+        global_composers = load_global_composer_headers(self.global_storage_path)
+        if global_composers:
+            by_project: Dict[str, Dict] = {}
+            for comp in global_composers:
+                project_name, folder_path = _parse_composer_workspace_identifier(comp)
+                seen_composer_ids.add(comp.get("composerId"))
+                key = folder_path
+                if key not in by_project:
+                    ws = comp.get("workspaceIdentifier") or {}
+                    by_project[key] = {
+                        "workspace_id": ws.get("id", ""),
                         "project_name": project_name,
                         "folder_path": folder_path,
-                        "composers": composers,
-                        "latest_dialog": latest_dialog,
-                        "state_db_path": str(state_db),
-                    })
+                        "composers": [],
+                        "latest_dialog": None,
+                        "state_db_path": str(self.global_storage_path),
+                    }
+                by_project[key]["composers"].append(comp)
 
-                conn.close()
+            for info in by_project.values():
+                info["latest_dialog"] = max(
+                    info["composers"],
+                    key=lambda x: x.get("lastUpdatedAt", 0),
+                )
+                projects.append(info)
 
-            except Exception:
-                print(f"Error processing project {workspace_dir.name}")
-                continue
+        # --- Legacy: per-workspace composerData (pre-3.0) ---
+        if self.workspace_storage_path.exists():
+            for workspace_dir in self.workspace_storage_path.iterdir():
+                if not workspace_dir.is_dir():
+                    continue
+
+                workspace_json = workspace_dir / "workspace.json"
+                state_db = workspace_dir / "state.vscdb"
+
+                if not workspace_json.exists() or not state_db.exists():
+                    continue
+
+                try:
+                    with open(workspace_json, "r") as f:
+                        workspace_data = json.load(f)
+
+                    project_name, folder_path = parse_workspace_storage_meta(
+                        workspace_data
+                    )
+
+                    conn = sqlite3.connect(state_db)
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
+                    )
+                    result = cursor.fetchone()
+
+                    if result:
+                        composer_data = json.loads(result[0])
+                        composers = composer_data.get("allComposers", [])
+                        new_composers = [
+                            c
+                            for c in composers
+                            if c.get("composerId") not in seen_composer_ids
+                        ]
+                        if new_composers:
+                            for c in new_composers:
+                                seen_composer_ids.add(c.get("composerId"))
+                            latest_dialog = max(
+                                new_composers,
+                                key=lambda x: x.get("lastUpdatedAt", 0),
+                            )
+                            projects.append(
+                                {
+                                    "workspace_id": workspace_dir.name,
+                                    "project_name": project_name,
+                                    "folder_path": folder_path,
+                                    "composers": new_composers,
+                                    "latest_dialog": latest_dialog,
+                                    "state_db_path": str(state_db),
+                                }
+                            )
+
+                    conn.close()
+
+                except Exception:
+                    continue
 
         projects.sort(
             key=lambda x: (
@@ -132,7 +177,7 @@ class CursorChatViewer:
     ) -> List[Dict]:
         """
         Get all dialogs across all projects, optionally filtered.
-        
+
         Args:
             start_date: Filter dialogs after this date (inclusive)
             end_date: Filter dialogs before this date (inclusive)
@@ -162,21 +207,26 @@ class CursorChatViewer:
                 if end_ts and filter_date > end_ts:
                     continue
 
-                all_dialogs.append({
-                    "composer_id": composer.get("composerId", "unknown"),
-                    "name": composer.get("name", "Untitled"),
-                    "project_name": project["project_name"],
-                    "folder_path": project["folder_path"],
-                    "last_updated": last_updated,
-                    "created_at": created_at,
-                })
+                all_dialogs.append(
+                    {
+                        "composer_id": composer.get("composerId", "unknown"),
+                        "name": composer.get("name", "Untitled"),
+                        "project_name": project["project_name"],
+                        "folder_path": project["folder_path"],
+                        "last_updated": last_updated,
+                        "created_at": created_at,
+                    }
+                )
 
         if sort_by == "name":
             all_dialogs.sort(key=lambda x: x.get("name", "").lower(), reverse=sort_desc)
         elif sort_by == "project":
             all_dialogs.sort(
-                key=lambda x: (x.get("project_name", "").lower(), x.get("name", "").lower()),
-                reverse=sort_desc
+                key=lambda x: (
+                    x.get("project_name", "").lower(),
+                    x.get("name", "").lower(),
+                ),
+                reverse=sort_desc,
             )
         else:
             date_field = "last_updated" if use_updated else "created_at"
