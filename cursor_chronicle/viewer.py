@@ -100,6 +100,10 @@ class CursorChatViewer:
                 )
                 projects.append(info)
 
+        # Paths already covered by global composerHeaders — skip legacy data
+        # for these since Cursor migrates all conversations on upgrade to 3.0+.
+        seen_paths: set = {p["folder_path"] for p in projects}
+
         # --- Legacy: per-workspace composerData (pre-3.0) ---
         if self.workspace_storage_path.exists():
             for workspace_dir in self.workspace_storage_path.iterdir():
@@ -119,6 +123,9 @@ class CursorChatViewer:
                     project_name, folder_path = parse_workspace_storage_meta(
                         workspace_data
                     )
+
+                    if folder_path in seen_paths:
+                        continue
 
                     with sqlite3.connect(state_db) as conn:
                         cursor = conn.cursor()

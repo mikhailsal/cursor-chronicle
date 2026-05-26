@@ -503,5 +503,257 @@ class TestViewerMethods(unittest.TestCase):
         self.assertIsInstance(result, str)
 
 
+class TestGetProjectsGlobalComposerHeaders(unittest.TestCase):
+    """Test get_projects() reading from the Cursor 3.0+ global composerHeaders key."""
+
+    def _make_global_db(self, tmpdir: Path, composers: list) -> Path:
+        """Create a temp state.vscdb with composer.composerHeaders in ItemTable."""
+        db_path = tmpdir / "state.vscdb"
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
+        cur.execute(
+            "INSERT INTO ItemTable VALUES (?, ?)",
+            ("composer.composerHeaders", json.dumps({"allComposers": composers})),
+        )
+        conn.commit()
+        conn.close()
+        return db_path
+
+    def test_global_headers_returns_projects(self):
+        """Global composerHeaders are loaded and grouped by folder_path."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "aaa",
+                    "name": "Fix auth bug",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/myapp", "scheme": "file"},
+                    },
+                },
+                {
+                    "composerId": "bbb",
+                    "name": "Add tests",
+                    "lastUpdatedAt": 1710100000000,
+                    "createdAt": 1710000000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/myapp", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.global_storage_path = db_path
+            viewer.workspace_storage_path = tmp_path / "nonexistent"
+
+            projects = viewer.get_projects()
+            self.assertEqual(len(projects), 1)
+            self.assertEqual(projects[0]["project_name"], "myapp")
+            self.assertEqual(projects[0]["folder_path"], "/home/user/myapp")
+            self.assertEqual(len(projects[0]["composers"]), 2)
+            self.assertEqual(
+                projects[0]["latest_dialog"]["composerId"], "bbb"
+            )
+
+    def test_global_headers_multiple_projects(self):
+        """Composers from different workspaces produce separate projects."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "c1",
+                    "name": "Chat 1",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/alpha", "scheme": "file"},
+                    },
+                },
+                {
+                    "composerId": "c2",
+                    "name": "Chat 2",
+                    "lastUpdatedAt": 1710100000000,
+                    "createdAt": 1710000000000,
+                    "workspaceIdentifier": {
+                        "id": "ws2",
+                        "uri": {"fsPath": "/home/user/beta", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.global_storage_path = db_path
+            viewer.workspace_storage_path = tmp_path / "nonexistent"
+
+            projects = viewer.get_projects()
+            self.assertEqual(len(projects), 2)
+            names = {p["project_name"] for p in projects}
+            self.assertEqual(names, {"alpha", "beta"})
+
+    def test_global_headers_deduplicates_with_legacy(self):
+        """Composers already seen in global headers are not duplicated from legacy."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+
+            composers = [
+                {
+                    "composerId": "shared-id",
+                    "name": "Shared Chat",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/proj", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            # Also create a legacy workspace with the same composerId
+            ws_dir = tmp_path / "legacy_ws"
+            ws_dir.mkdir()
+            (ws_dir / "workspace.json").write_text(
+                json.dumps({"folder": "file:///home/user/proj"})
+            )
+            legacy_db = ws_dir / "state.vscdb"
+            conn = sqlite3.connect(legacy_db)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cur.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "shared-id",
+                                    "name": "Shared Chat",
+                                    "lastUpdatedAt": 1710000000000,
+                                    "createdAt": 1709900000000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            conn.close()
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.global_storage_path = db_path
+            viewer.workspace_storage_path = tmp_path
+
+            projects = viewer.get_projects()
+            all_composer_ids = [
+                c.get("composerId")
+                for p in projects
+                for c in p["composers"]
+            ]
+            self.assertEqual(all_composer_ids.count("shared-id"), 1)
+
+    def test_legacy_skipped_when_global_covers_same_path(self):
+        """Legacy data for a folder_path already in global headers is skipped entirely."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+
+            composers = [
+                {
+                    "composerId": "global-1",
+                    "name": "Global Chat",
+                    "lastUpdatedAt": 1710100000000,
+                    "createdAt": 1710000000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/proj", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            # Legacy workspace with a different composerId but same project path
+            ws_dir = tmp_path / "ws_legacy"
+            ws_dir.mkdir()
+            (ws_dir / "workspace.json").write_text(
+                json.dumps({"folder": "file:///home/user/proj"})
+            )
+            legacy_db = ws_dir / "state.vscdb"
+            conn = sqlite3.connect(legacy_db)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cur.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "legacy-1",
+                                    "name": "Legacy Chat",
+                                    "lastUpdatedAt": 1709000000000,
+                                    "createdAt": 1708900000000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            conn.close()
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.global_storage_path = db_path
+            viewer.workspace_storage_path = tmp_path
+
+            projects = viewer.get_projects()
+
+            # One project entry, legacy skipped since global already covers this path
+            proj_paths = [p["folder_path"] for p in projects]
+            self.assertEqual(proj_paths.count("/home/user/proj"), 1)
+
+            proj = next(p for p in projects if p["folder_path"] == "/home/user/proj")
+            self.assertEqual(len(proj["composers"]), 1)
+            self.assertEqual(proj["composers"][0]["composerId"], "global-1")
+
+    def test_global_headers_file_uri_decoded(self):
+        """file:// URIs in workspaceIdentifier.uri.external are decoded."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "x1",
+                    "name": "Test",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {
+                            "external": "file:///Users/dev/My%20Project",
+                            "scheme": "file",
+                        },
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.global_storage_path = db_path
+            viewer.workspace_storage_path = tmp_path / "nonexistent"
+
+            projects = viewer.get_projects()
+            self.assertEqual(len(projects), 1)
+            self.assertEqual(projects[0]["folder_path"], "/Users/dev/My Project")
+            self.assertEqual(projects[0]["project_name"], "My Project")
+
+
 if __name__ == "__main__":
     unittest.main()

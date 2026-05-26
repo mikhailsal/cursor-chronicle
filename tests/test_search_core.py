@@ -304,5 +304,166 @@ class TestSearchHistoryIntegration(unittest.TestCase):
         self.assertIsInstance(composers, list)
 
 
+class TestGetAllComposersGlobalHeaders(unittest.TestCase):
+    """Test get_all_composers() with the Cursor 3.0+ global composerHeaders key."""
+
+    def _make_global_db(self, tmpdir: Path, composers: list) -> Path:
+        db_path = tmpdir / "state.vscdb"
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
+        cur.execute(
+            "INSERT INTO ItemTable VALUES (?, ?)",
+            ("composer.composerHeaders", json.dumps({"allComposers": composers})),
+        )
+        conn.commit()
+        conn.close()
+        return db_path
+
+    def test_global_headers_loaded(self):
+        """Composers from global composerHeaders are returned with project metadata."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "g1",
+                    "name": "Global Chat",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws-abc",
+                        "uri": {"fsPath": "/home/user/repo", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            searcher = search_history.CursorHistorySearch()
+            searcher.global_storage_path = db_path
+            searcher.workspace_storage_path = tmp_path / "nonexistent"
+
+            result = searcher.get_all_composers()
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["composerId"], "g1")
+            self.assertEqual(result[0]["_project_name"], "repo")
+            self.assertEqual(result[0]["_folder_path"], "/home/user/repo")
+            self.assertEqual(result[0]["_workspace_id"], "ws-abc")
+
+    def test_global_headers_deduplicates_with_legacy(self):
+        """Composers in global headers are not duplicated from legacy workspace data."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "dup-id",
+                    "name": "Dup Chat",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/proj", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            # Create legacy workspace with same composerId
+            ws_dir = tmp_path / "ws_legacy"
+            ws_dir.mkdir()
+            (ws_dir / "workspace.json").write_text(
+                json.dumps({"folder": "file:///home/user/proj"})
+            )
+            legacy_db = ws_dir / "state.vscdb"
+            conn = sqlite3.connect(legacy_db)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cur.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "dup-id",
+                                    "name": "Dup Chat",
+                                    "lastUpdatedAt": 1710000000000,
+                                    "createdAt": 1709900000000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            conn.close()
+
+            searcher = search_history.CursorHistorySearch()
+            searcher.global_storage_path = db_path
+            searcher.workspace_storage_path = tmp_path
+
+            result = searcher.get_all_composers()
+            ids = [c["composerId"] for c in result]
+            self.assertEqual(ids.count("dup-id"), 1)
+
+    def test_global_headers_merges_unique_legacy(self):
+        """Legacy-only composers (not in global headers) are still included."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "global-only",
+                    "name": "Global",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/proj", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            ws_dir = tmp_path / "ws_old"
+            ws_dir.mkdir()
+            (ws_dir / "workspace.json").write_text(
+                json.dumps({"folder": "file:///home/user/proj"})
+            )
+            legacy_db = ws_dir / "state.vscdb"
+            conn = sqlite3.connect(legacy_db)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cur.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "legacy-only",
+                                    "name": "Legacy",
+                                    "lastUpdatedAt": 1700000000000,
+                                    "createdAt": 1699900000000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            conn.close()
+
+            searcher = search_history.CursorHistorySearch()
+            searcher.global_storage_path = db_path
+            searcher.workspace_storage_path = tmp_path
+
+            result = searcher.get_all_composers()
+            ids = {c["composerId"] for c in result}
+            self.assertIn("global-only", ids)
+            self.assertIn("legacy-only", ids)
+            self.assertEqual(len(result), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
