@@ -26,50 +26,48 @@ def get_dialog_messages(composer_id: str, db_path: Optional[Path] = None) -> Lis
     if not global_storage_path.exists():
         raise FileNotFoundError(f"Global database not found: {global_storage_path}")
 
-    conn = sqlite3.connect(global_storage_path)
-    cursor = conn.cursor()
+    with sqlite3.connect(global_storage_path) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute(
-        """SELECT value FROM cursorDiskKV 
-        WHERE key = ? AND LENGTH(value) > 100""",
-        (f"composerData:{composer_id}",),
-    )
-
-    composer_result = cursor.fetchone()
-    ordered_bubble_ids = []
-
-    if composer_result:
-        try:
-            composer_data = json.loads(composer_result[0])
-            if "fullConversationHeadersOnly" in composer_data:
-                ordered_bubble_ids = [
-                    bubble["bubbleId"]
-                    for bubble in composer_data["fullConversationHeadersOnly"]
-                ]
-        except json.JSONDecodeError:
-            pass
-
-    if not ordered_bubble_ids:
         cursor.execute(
-            """SELECT rowid, key, value FROM cursorDiskKV 
-            WHERE key LIKE ? AND LENGTH(value) > 100 
-            ORDER BY rowid""",
-            (f"bubbleId:{composer_id}:%",),
+            """SELECT value FROM cursorDiskKV 
+            WHERE key = ? AND LENGTH(value) > 100""",
+            (f"composerData:{composer_id}",),
         )
-        results = cursor.fetchall()
-    else:
-        results = []
-        for bubble_id in ordered_bubble_ids:
+
+        composer_result = cursor.fetchone()
+        ordered_bubble_ids = []
+
+        if composer_result:
+            try:
+                composer_data = json.loads(composer_result[0])
+                if "fullConversationHeadersOnly" in composer_data:
+                    ordered_bubble_ids = [
+                        bubble["bubbleId"]
+                        for bubble in composer_data["fullConversationHeadersOnly"]
+                    ]
+            except json.JSONDecodeError:
+                pass
+
+        if not ordered_bubble_ids:
             cursor.execute(
                 """SELECT rowid, key, value FROM cursorDiskKV 
-                WHERE key = ? AND LENGTH(value) > 100""",
-                (f"bubbleId:{composer_id}:{bubble_id}",),
+                WHERE key LIKE ? AND LENGTH(value) > 100 
+                ORDER BY rowid""",
+                (f"bubbleId:{composer_id}:%",),
             )
-            result = cursor.fetchone()
-            if result:
-                results.append(result)
-
-    conn.close()
+            results = cursor.fetchall()
+        else:
+            results = []
+            for bubble_id in ordered_bubble_ids:
+                cursor.execute(
+                    """SELECT rowid, key, value FROM cursorDiskKV 
+                    WHERE key = ? AND LENGTH(value) > 100""",
+                    (f"bubbleId:{composer_id}:{bubble_id}",),
+                )
+                result = cursor.fetchone()
+                if result:
+                    results.append(result)
 
     messages = []
     for rowid, key, value in results:

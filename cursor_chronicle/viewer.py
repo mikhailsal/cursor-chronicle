@@ -120,40 +120,38 @@ class CursorChatViewer:
                         workspace_data
                     )
 
-                    conn = sqlite3.connect(state_db)
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
-                    )
-                    result = cursor.fetchone()
+                    with sqlite3.connect(state_db) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
+                        )
+                        result = cursor.fetchone()
 
-                    if result:
-                        composer_data = json.loads(result[0])
-                        composers = composer_data.get("allComposers", [])
-                        new_composers = [
-                            c
-                            for c in composers
-                            if c.get("composerId") not in seen_composer_ids
-                        ]
-                        if new_composers:
-                            for c in new_composers:
-                                seen_composer_ids.add(c.get("composerId"))
-                            latest_dialog = max(
-                                new_composers,
-                                key=lambda x: x.get("lastUpdatedAt", 0),
-                            )
-                            projects.append(
-                                {
-                                    "workspace_id": workspace_dir.name,
-                                    "project_name": project_name,
-                                    "folder_path": folder_path,
-                                    "composers": new_composers,
-                                    "latest_dialog": latest_dialog,
-                                    "state_db_path": str(state_db),
-                                }
-                            )
-
-                    conn.close()
+                        if result:
+                            composer_data = json.loads(result[0])
+                            composers = composer_data.get("allComposers", [])
+                            new_composers = [
+                                c
+                                for c in composers
+                                if c.get("composerId") not in seen_composer_ids
+                            ]
+                            if new_composers:
+                                for c in new_composers:
+                                    seen_composer_ids.add(c.get("composerId"))
+                                latest_dialog = max(
+                                    new_composers,
+                                    key=lambda x: x.get("lastUpdatedAt", 0),
+                                )
+                                projects.append(
+                                    {
+                                        "workspace_id": workspace_dir.name,
+                                        "project_name": project_name,
+                                        "folder_path": folder_path,
+                                        "composers": new_composers,
+                                        "latest_dialog": latest_dialog,
+                                        "state_db_path": str(state_db),
+                                    }
+                                )
 
                 except Exception:
                     continue

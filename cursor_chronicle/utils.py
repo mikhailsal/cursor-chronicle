@@ -135,15 +135,14 @@ def load_global_composer_headers(global_storage_path: Path) -> List[Dict]:
     if not global_storage_path.exists():
         return []
     try:
-        conn = sqlite3.connect(global_storage_path)
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT value FROM ItemTable WHERE key = 'composer.composerHeaders'"
-        )
-        result = cur.fetchone()
-        conn.close()
-        if result:
-            return json.loads(result[0]).get("allComposers", [])
+        with sqlite3.connect(global_storage_path) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT value FROM ItemTable WHERE key = 'composer.composerHeaders'"
+            )
+            result = cur.fetchone()
+            if result:
+                return json.loads(result[0]).get("allComposers", [])
     except Exception:
         pass
     return []

@@ -70,25 +70,23 @@ class CursorHistorySearch:
                         workspace_data
                     )
 
-                    conn = sqlite3.connect(state_db)
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
-                    )
-                    result = cursor.fetchone()
+                    with sqlite3.connect(state_db) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "SELECT value FROM ItemTable WHERE key = 'composer.composerData'"
+                        )
+                        result = cursor.fetchone()
 
-                    if result:
-                        composer_data = json.loads(result[0])
-                        for comp in composer_data.get("allComposers", []):
-                            if comp.get("composerId") in seen_ids:
-                                continue
-                            comp["_project_name"] = project_name
-                            comp["_folder_path"] = folder_path
-                            comp["_workspace_id"] = workspace_dir.name
-                            seen_ids.add(comp.get("composerId"))
-                            composers.append(comp)
-
-                    conn.close()
+                        if result:
+                            composer_data = json.loads(result[0])
+                            for comp in composer_data.get("allComposers", []):
+                                if comp.get("composerId") in seen_ids:
+                                    continue
+                                comp["_project_name"] = project_name
+                                comp["_folder_path"] = folder_path
+                                comp["_workspace_id"] = workspace_dir.name
+                                seen_ids.add(comp.get("composerId"))
+                                composers.append(comp)
 
                 except Exception:
                     continue
@@ -156,16 +154,15 @@ class CursorHistorySearch:
             return []
 
         matches = []
-        conn = sqlite3.connect(self.global_storage_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.global_storage_path) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute(
-            """SELECT key, value FROM cursorDiskKV
-            WHERE key LIKE ? AND LENGTH(value) > 100""",
-            (f"bubbleId:{composer_id}:%",),
-        )
-        results = cursor.fetchall()
-        conn.close()
+            cursor.execute(
+                """SELECT key, value FROM cursorDiskKV
+                WHERE key LIKE ? AND LENGTH(value) > 100""",
+                (f"bubbleId:{composer_id}:%",),
+            )
+            results = cursor.fetchall()
 
         for key, value in results:
             try:
@@ -217,57 +214,55 @@ class CursorHistorySearch:
                 file=__import__("sys").stderr,
             )
 
-        conn = sqlite3.connect(self.global_storage_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.global_storage_path) as conn:
+            cursor = conn.cursor()
 
-        flags = 0 if case_sensitive else re.IGNORECASE
-        pattern = re.compile(re.escape(query), flags)
+            flags = 0 if case_sensitive else re.IGNORECASE
+            pattern = re.compile(re.escape(query), flags)
 
-        cursor.execute("""SELECT key, value FROM cursorDiskKV
-            WHERE key LIKE 'bubbleId:%' AND LENGTH(value) > 100""")
+            cursor.execute("""SELECT key, value FROM cursorDiskKV
+                WHERE key LIKE 'bubbleId:%' AND LENGTH(value) > 100""")
 
-        checked = 0
-        for key, value in cursor:
-            checked += 1
-            if checked % 1000 == 0 and verbose:
-                print(f"  Checked {checked} messages...", file=__import__("sys").stderr)
+            checked = 0
+            for key, value in cursor:
+                checked += 1
+                if checked % 1000 == 0 and verbose:
+                    print(f"  Checked {checked} messages...", file=__import__("sys").stderr)
 
-            parts = key.split(":")
-            if len(parts) < 2:
-                continue
-            composer_id = parts[1]
+                parts = key.split(":")
+                if len(parts) < 2:
+                    continue
+                composer_id = parts[1]
 
-            if composer_id not in composer_lookup:
-                continue
+                if composer_id not in composer_lookup:
+                    continue
 
-            if not pattern.search(value):
-                continue
+                if not pattern.search(value):
+                    continue
 
-            try:
-                bubble_data = json.loads(value)
-                bubble_matches = self.search_in_bubble(
-                    bubble_data, query, case_sensitive
-                )
+                try:
+                    bubble_data = json.loads(value)
+                    bubble_matches = self.search_in_bubble(
+                        bubble_data, query, case_sensitive
+                    )
 
-                if bubble_matches:
-                    composer = composer_lookup[composer_id]
-                    for match in bubble_matches:
-                        match["bubble_id"] = bubble_data.get("bubbleId", "")
-                        match["composer_id"] = composer_id
-                        match["project_name"] = composer.get("_project_name", "unknown")
-                        match["folder_path"] = composer.get("_folder_path", "unknown")
-                        match["dialog_name"] = composer.get("name", "Untitled")
-                        match["last_updated"] = composer.get("lastUpdatedAt", 0)
-                        match["created_at"] = composer.get("createdAt", 0)
-                        all_results.append(match)
+                    if bubble_matches:
+                        composer = composer_lookup[composer_id]
+                        for match in bubble_matches:
+                            match["bubble_id"] = bubble_data.get("bubbleId", "")
+                            match["composer_id"] = composer_id
+                            match["project_name"] = composer.get("_project_name", "unknown")
+                            match["folder_path"] = composer.get("_folder_path", "unknown")
+                            match["dialog_name"] = composer.get("name", "Untitled")
+                            match["last_updated"] = composer.get("lastUpdatedAt", 0)
+                            match["created_at"] = composer.get("createdAt", 0)
+                            all_results.append(match)
 
-                    if len(all_results) >= limit:
-                        break
+                        if len(all_results) >= limit:
+                            break
 
-            except json.JSONDecodeError:
-                continue
-
-        conn.close()
+                except json.JSONDecodeError:
+                    continue
 
         if verbose:
             print(
@@ -285,65 +280,64 @@ class CursorHistorySearch:
         if not self.global_storage_path.exists():
             return []
 
-        conn = sqlite3.connect(self.global_storage_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.global_storage_path) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute(
-            """SELECT value FROM cursorDiskKV
-            WHERE key = ? AND LENGTH(value) > 100""",
-            (f"composerData:{composer_id}",),
-        )
-        composer_result = cursor.fetchone()
-
-        ordered_bubble_ids = []
-        if composer_result:
-            try:
-                composer_data = json.loads(composer_result[0])
-                if "fullConversationHeadersOnly" in composer_data:
-                    ordered_bubble_ids = [
-                        bubble["bubbleId"]
-                        for bubble in composer_data["fullConversationHeadersOnly"]
-                    ]
-            except json.JSONDecodeError:
-                pass
-
-        target_index = -1
-        for i, bid in enumerate(ordered_bubble_ids):
-            if bid == bubble_id:
-                target_index = i
-                break
-
-        if target_index == -1:
-            conn.close()
-            return []
-
-        start = max(0, target_index - context_size)
-        end = min(len(ordered_bubble_ids), target_index + context_size + 1)
-        context_ids = ordered_bubble_ids[start:end]
-
-        messages = []
-        for bid in context_ids:
             cursor.execute(
                 """SELECT value FROM cursorDiskKV
                 WHERE key = ? AND LENGTH(value) > 100""",
-                (f"bubbleId:{composer_id}:{bid}",),
+                (f"composerData:{composer_id}",),
             )
-            result = cursor.fetchone()
-            if result:
-                try:
-                    bubble_data = json.loads(result[0])
-                    messages.append(
-                        {
-                            "bubble_id": bid,
-                            "type": bubble_data.get("type"),
-                            "text": bubble_data.get("text", ""),
-                            "is_target": bid == bubble_id,
-                        }
-                    )
-                except json.JSONDecodeError:
-                    continue
+            composer_result = cursor.fetchone()
 
-        conn.close()
+            ordered_bubble_ids = []
+            if composer_result:
+                try:
+                    composer_data = json.loads(composer_result[0])
+                    if "fullConversationHeadersOnly" in composer_data:
+                        ordered_bubble_ids = [
+                            bubble["bubbleId"]
+                            for bubble in composer_data["fullConversationHeadersOnly"]
+                        ]
+                except json.JSONDecodeError:
+                    pass
+
+            target_index = -1
+            for i, bid in enumerate(ordered_bubble_ids):
+                if bid == bubble_id:
+                    target_index = i
+                    break
+
+            if target_index == -1:
+                conn.close()
+                return []
+
+            start = max(0, target_index - context_size)
+            end = min(len(ordered_bubble_ids), target_index + context_size + 1)
+            context_ids = ordered_bubble_ids[start:end]
+
+            messages = []
+            for bid in context_ids:
+                cursor.execute(
+                    """SELECT value FROM cursorDiskKV
+                    WHERE key = ? AND LENGTH(value) > 100""",
+                    (f"bubbleId:{composer_id}:{bid}",),
+                )
+                result = cursor.fetchone()
+                if result:
+                    try:
+                        bubble_data = json.loads(result[0])
+                        messages.append(
+                            {
+                                "bubble_id": bid,
+                                "type": bubble_data.get("type"),
+                                "text": bubble_data.get("text", ""),
+                                "is_target": bid == bubble_id,
+                            }
+                        )
+                    except json.JSONDecodeError:
+                        continue
+
         return messages
 
     def get_full_dialog(self, composer_id: str) -> List[Dict]:
@@ -351,49 +345,47 @@ class CursorHistorySearch:
         if not self.global_storage_path.exists():
             return []
 
-        conn = sqlite3.connect(self.global_storage_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.global_storage_path) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute(
-            """SELECT value FROM cursorDiskKV
-            WHERE key = ? AND LENGTH(value) > 100""",
-            (f"composerData:{composer_id}",),
-        )
-        composer_result = cursor.fetchone()
-
-        ordered_bubble_ids = []
-        if composer_result:
-            try:
-                composer_data = json.loads(composer_result[0])
-                if "fullConversationHeadersOnly" in composer_data:
-                    ordered_bubble_ids = [
-                        bubble["bubbleId"]
-                        for bubble in composer_data["fullConversationHeadersOnly"]
-                    ]
-            except json.JSONDecodeError:
-                pass
-
-        if not ordered_bubble_ids:
             cursor.execute(
-                """SELECT key, value FROM cursorDiskKV
-                WHERE key LIKE ? AND LENGTH(value) > 100
-                ORDER BY rowid""",
-                (f"bubbleId:{composer_id}:%",),
+                """SELECT value FROM cursorDiskKV
+                WHERE key = ? AND LENGTH(value) > 100""",
+                (f"composerData:{composer_id}",),
             )
-            results = cursor.fetchall()
-        else:
-            results = []
-            for bid in ordered_bubble_ids:
+            composer_result = cursor.fetchone()
+
+            ordered_bubble_ids = []
+            if composer_result:
+                try:
+                    composer_data = json.loads(composer_result[0])
+                    if "fullConversationHeadersOnly" in composer_data:
+                        ordered_bubble_ids = [
+                            bubble["bubbleId"]
+                            for bubble in composer_data["fullConversationHeadersOnly"]
+                        ]
+                except json.JSONDecodeError:
+                    pass
+
+            if not ordered_bubble_ids:
                 cursor.execute(
                     """SELECT key, value FROM cursorDiskKV
-                    WHERE key = ? AND LENGTH(value) > 100""",
-                    (f"bubbleId:{composer_id}:{bid}",),
+                    WHERE key LIKE ? AND LENGTH(value) > 100
+                    ORDER BY rowid""",
+                    (f"bubbleId:{composer_id}:%",),
                 )
-                result = cursor.fetchone()
-                if result:
-                    results.append(result)
-
-        conn.close()
+                results = cursor.fetchall()
+            else:
+                results = []
+                for bid in ordered_bubble_ids:
+                    cursor.execute(
+                        """SELECT key, value FROM cursorDiskKV
+                        WHERE key = ? AND LENGTH(value) > 100""",
+                        (f"bubbleId:{composer_id}:{bid}",),
+                    )
+                    result = cursor.fetchone()
+                    if result:
+                        results.append(result)
 
         messages = []
         for key, value in results:
