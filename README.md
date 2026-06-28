@@ -550,26 +550,31 @@ Cursor Chronicle understands the complex internal structure of Cursor IDE's SQLi
 
 ### Database Location
 
-Cursor IDE uses SQLite databases to store chat history:
+Cursor IDE uses SQLite databases to store chat history, supporting both **Cursor 3.0+** (modern format) and **Cursor 2.x / pre-3.0** (legacy format):
 
 - **Global Storage**: `~/.config/Cursor/User/globalStorage/state.vscdb`
-  - Contains actual message `bubbles` (individual chat messages and tool outputs)
-  - Bubbles stored under keys: `bubbleId:<composerId>:<bubbleId>`
-  - Over 100 different fields per bubble with comprehensive metadata
+  - **Cursor 3.0+ (Modern)**: Stores high-level dialogue headers for *all* projects under the key `composer.composerHeaders` (including project paths and workspace identifiers).
+  - Contains actual message `bubbles` (individual chat messages, tool outputs, and thinking processes) stored under keys: `bubbleId:<composerId>:<bubbleId>` (for both 2.x and 3.0+).
+  - Stores individual composer details under `composerData:<composerId>`.
+  - Over 100 different fields per bubble with comprehensive metadata.
 
 - **Workspace Storage**: `~/.config/Cursor/User/workspaceStorage/<workspace_id>/state.vscdb`
-  - Each workspace has its own database
-  - Contains high-level `composerData` (chat sessions metadata)
-  - Stores individual composer details under `composerData:<composerId>`
+  - **Cursor 2.x / Pre-3.0 (Legacy)**: Each workspace has its own database containing high-level `composerData` (chat sessions metadata) under the key `composer.composerData`.
+  - Also contains a `workspace.json` file mapping the `<workspace_id>` to the local folder path.
+
+> [!NOTE]
+> Cursor Chronicle automatically implements a multi-source loading strategy: it reads and merges dialogue metadata from both the global headers (3.0+) and local workspace databases (legacy), deduplicating them by `composerId` to ensure a seamless experience across all Cursor versions.
 
 ### Key Data Structures
 
 #### Composer Data (Chat Sessions)
+Depending on the Cursor version, this is loaded from either the global database (`composer.composerHeaders` for 3.0+) or individual workspace databases (`composer.composerData` for pre-3.0):
 - `composerId`: Unique identifier for the chat session
 - `name`: User-defined name of the session
-- `createdAt`: Unix timestamp (milliseconds) when session was created
-- `lastUpdatedAt`: Unix timestamp (milliseconds) of last update
-- **`fullConversationHeadersOnly`**: Ordered array defining correct chronological order of messages
+- `createdAt`: Unix timestamp (milliseconds) when the session was created
+- `lastUpdatedAt`: Unix timestamp (milliseconds) of the last update
+- `workspaceIdentifier` (Cursor 3.0+ only): Contains the workspace ID and URI/path (`fsPath`) identifying which project this composer belongs to
+- **`fullConversationHeadersOnly`**: Ordered array defining the correct chronological order of message bubbles
 
 #### Bubble Data (Individual Messages)
 **Core Fields:**
