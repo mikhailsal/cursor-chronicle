@@ -107,22 +107,29 @@ def get_cursor_paths() -> tuple:
     return cursor_config_path, workspace_storage_path, global_storage_path
 
 
-def _parse_composer_workspace_identifier(comp: Dict) -> Tuple[str, str]:
+def parse_composer_workspace_identifier(comp: Dict) -> Tuple[str, str]:
     """
     Extract (project_name, folder_path) from a Cursor 3.0+ composer header's
     ``workspaceIdentifier`` field.
     """
     ws = comp.get("workspaceIdentifier") or {}
     uri_obj = ws.get("uri") or {}
-    folder_path = (
-        uri_obj.get("fsPath") or uri_obj.get("path") or uri_obj.get("external", "")
-    )
+    if isinstance(uri_obj, dict):
+        folder_path = (
+            uri_obj.get("fsPath") or uri_obj.get("path") or uri_obj.get("external") or ""
+        )
+    elif isinstance(uri_obj, str):
+        folder_path = uri_obj
+    else:
+        folder_path = ""
+
     if isinstance(folder_path, str) and folder_path.startswith("file://"):
         folder_path = urllib.parse.unquote(folder_path[7:])
     if not folder_path:
         folder_path = "unknown"
     project_name = os.path.basename(folder_path) or folder_path
     return project_name, folder_path
+
 
 
 def load_global_composer_headers(global_storage_path: Path) -> List[Dict]:

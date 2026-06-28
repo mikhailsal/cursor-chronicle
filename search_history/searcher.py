@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from cursor_chronicle.utils import (
-    _parse_composer_workspace_identifier,
     get_cursor_paths,
     load_global_composer_headers,
+    parse_composer_workspace_identifier,
     parse_workspace_storage_meta,
 )
 
@@ -42,12 +42,14 @@ class CursorHistorySearch:
 
         # --- Cursor 3.0+: global composerHeaders ---
         for comp in load_global_composer_headers(self.global_storage_path):
-            project_name, folder_path = _parse_composer_workspace_identifier(comp)
+            project_name, folder_path = parse_composer_workspace_identifier(comp)
             ws = comp.get("workspaceIdentifier") or {}
             comp["_project_name"] = project_name
             comp["_folder_path"] = folder_path
             comp["_workspace_id"] = ws.get("id", "")
-            seen_ids.add(comp.get("composerId"))
+            composer_id = comp.get("composerId")
+            if composer_id:
+                seen_ids.add(composer_id)
             composers.append(comp)
 
         # --- Legacy: per-workspace composerData ---
@@ -80,12 +82,14 @@ class CursorHistorySearch:
                         if result:
                             composer_data = json.loads(result[0])
                             for comp in composer_data.get("allComposers", []):
-                                if comp.get("composerId") in seen_ids:
+                                cid = comp.get("composerId")
+                                if cid and cid in seen_ids:
                                     continue
                                 comp["_project_name"] = project_name
                                 comp["_folder_path"] = folder_path
                                 comp["_workspace_id"] = workspace_dir.name
-                                seen_ids.add(comp.get("composerId"))
+                                if cid:
+                                    seen_ids.add(cid)
                                 composers.append(comp)
 
                 except Exception:
@@ -309,7 +313,6 @@ class CursorHistorySearch:
                     break
 
             if target_index == -1:
-                conn.close()
                 return []
 
             start = max(0, target_index - context_size)

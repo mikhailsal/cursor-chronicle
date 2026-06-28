@@ -15,9 +15,9 @@ from .formatters import infer_model_from_context as _infer_model_from_context
 from .messages import get_dialog_messages as _get_dialog_messages
 from .utils import (
     TOOL_TYPES,
-    _parse_composer_workspace_identifier,
     get_cursor_paths,
     load_global_composer_headers,
+    parse_composer_workspace_identifier,
     parse_workspace_storage_meta,
 )
 
@@ -70,16 +70,17 @@ class CursorChatViewer:
         1. Global ``composer.composerHeaders`` (Cursor 3.0+, April 2026).
         2. Per-workspace ``composer.composerData`` (legacy, pre-3.0).
         """
-        projects = []
+        by_project: Dict[str, Dict] = {}
         seen_composer_ids: set = set()
 
         # --- Cursor 3.0+: global composerHeaders with workspaceIdentifier ---
         global_composers = load_global_composer_headers(self.global_storage_path)
         if global_composers:
-            by_project: Dict[str, Dict] = {}
             for comp in global_composers:
-                project_name, folder_path = _parse_composer_workspace_identifier(comp)
-                seen_composer_ids.add(comp.get("composerId"))
+                composer_id = comp.get("composerId")
+                if composer_id:
+                    seen_composer_ids.add(composer_id)
+                project_name, folder_path = parse_composer_workspace_identifier(comp)
                 key = folder_path
                 if key not in by_project:
                     ws = comp.get("workspaceIdentifier") or {}
@@ -92,17 +93,6 @@ class CursorChatViewer:
                         "state_db_path": str(self.global_storage_path),
                     }
                 by_project[key]["composers"].append(comp)
-
-            for info in by_project.values():
-                info["latest_dialog"] = max(
-                    info["composers"],
-                    key=lambda x: x.get("lastUpdatedAt", 0),
-                )
-                projects.append(info)
-
-        # Paths already covered by global composerHeaders — skip legacy data
-        # for these since Cursor migrates all conversations on upgrade to 3.0+.
-        seen_paths: set = {p["folder_path"] for p in projects}
 
         # --- Legacy: per-workspace composerData (pre-3.0) ---
         if self.workspace_storage_path.exists():
@@ -124,9 +114,6 @@ class CursorChatViewer:
                         workspace_data
                     )
 
-                    if folder_path in seen_paths:
-                        continue
-
                     with sqlite3.connect(state_db) as conn:
                         cursor = conn.cursor()
                         cursor.execute(
@@ -137,31 +124,37 @@ class CursorChatViewer:
                         if result:
                             composer_data = json.loads(result[0])
                             composers = composer_data.get("allComposers", [])
-                            new_composers = [
-                                c
-                                for c in composers
-                                if c.get("composerId") not in seen_composer_ids
-                            ]
+                            new_composers = []
+                            for c in composers:
+                                cid = c.get("composerId")
+                                if not cid or cid not in seen_composer_ids:
+                                    if cid:
+                                        seen_composer_ids.add(cid)
+                                    new_composers.append(c)
+
                             if new_composers:
-                                for c in new_composers:
-                                    seen_composer_ids.add(c.get("composerId"))
-                                latest_dialog = max(
-                                    new_composers,
-                                    key=lambda x: x.get("lastUpdatedAt", 0),
-                                )
-                                projects.append(
-                                    {
+                                key = folder_path
+                                if key not in by_project:
+                                    by_project[key] = {
                                         "workspace_id": workspace_dir.name,
                                         "project_name": project_name,
                                         "folder_path": folder_path,
-                                        "composers": new_composers,
-                                        "latest_dialog": latest_dialog,
+                                        "composers": [],
+                                        "latest_dialog": None,
                                         "state_db_path": str(state_db),
                                     }
-                                )
+                                by_project[key]["composers"].extend(new_composers)
 
                 except Exception:
                     continue
+
+        projects = list(by_project.values())
+        for info in projects:
+            if info["composers"]:
+                info["latest_dialog"] = max(
+                    info["composers"],
+                    key=lambda x: x.get("lastUpdatedAt", 0),
+                )
 
         projects.sort(
             key=lambda x: (

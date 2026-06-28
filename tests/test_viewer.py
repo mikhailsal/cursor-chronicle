@@ -660,8 +660,8 @@ class TestGetProjectsGlobalComposerHeaders(unittest.TestCase):
             ]
             self.assertEqual(all_composer_ids.count("shared-id"), 1)
 
-    def test_legacy_skipped_when_global_covers_same_path(self):
-        """Legacy data for a folder_path already in global headers is skipped entirely."""
+    def test_legacy_merged_when_global_covers_same_path(self):
+        """Legacy data for a folder_path already in global headers is merged, deduplicating by composerId."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
 
@@ -716,13 +716,42 @@ class TestGetProjectsGlobalComposerHeaders(unittest.TestCase):
 
             projects = viewer.get_projects()
 
-            # One project entry, legacy skipped since global already covers this path
+            # One project entry, legacy merged
             proj_paths = [p["folder_path"] for p in projects]
             self.assertEqual(proj_paths.count("/home/user/proj"), 1)
 
             proj = next(p for p in projects if p["folder_path"] == "/home/user/proj")
-            self.assertEqual(len(proj["composers"]), 1)
-            self.assertEqual(proj["composers"][0]["composerId"], "global-1")
+            self.assertEqual(len(proj["composers"]), 2)
+            composer_ids = {c["composerId"] for c in proj["composers"]}
+            self.assertEqual(composer_ids, {"global-1", "legacy-1"})
+
+    def test_global_headers_uri_as_string(self):
+        """file:// URIs stored directly as string in workspaceIdentifier.uri do not cause AttributeError."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "x1",
+                    "name": "Test String URI",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": "file:///Users/dev/StringUriProj",
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            viewer = cursor_chronicle.CursorChatViewer()
+            viewer.global_storage_path = db_path
+            viewer.workspace_storage_path = tmp_path / "nonexistent"
+
+            projects = viewer.get_projects()
+            self.assertEqual(len(projects), 1)
+            self.assertEqual(projects[0]["folder_path"], "/Users/dev/StringUriProj")
+            self.assertEqual(projects[0]["project_name"], "StringUriProj")
+
 
     def test_global_headers_file_uri_decoded(self):
         """file:// URIs in workspaceIdentifier.uri.external are decoded."""
