@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cursor-chronicle"
 version = "1.8.0"
-description = "Extracts and displays dialogs from Cursor IDE database with support for attached files"
+description = "The ultimate Cursor IDE database companion: full-text search, chat extraction, usage statistics & token tracking, tool call analysis, Markdown export, and secure backup & restore."
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
