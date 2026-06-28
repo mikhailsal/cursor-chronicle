@@ -71,11 +71,7 @@ class TestCursorUserDirEnv(unittest.TestCase):
                 ):
                     base, _, _ = get_cursor_paths()
         expected = (
-            Path("/Users/x")
-            / "Library"
-            / "Application Support"
-            / "Cursor"
-            / "User"
+            Path("/Users/x") / "Library" / "Application Support" / "Cursor" / "User"
         )
         self.assertEqual(base, expected)
 

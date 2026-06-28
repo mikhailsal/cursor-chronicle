@@ -88,11 +88,15 @@ def show_dialog(
                 composer = c
                 break
         if not composer:
-            print(f"Dialog '{dialog_name}' not found in project '{project['project_name']}'.")
+            print(
+                f"Dialog '{dialog_name}' not found in project '{project['project_name']}'."
+            )
             return
     else:
         if project["composers"]:
-            composer = max(project["composers"], key=lambda x: x.get("lastUpdatedAt", 0))
+            composer = max(
+                project["composers"], key=lambda x: x.get("lastUpdatedAt", 0)
+            )
         else:
             print(f"No dialogs found in project '{project['project_name']}'.")
             return
@@ -153,32 +157,90 @@ Examples:
     )
 
     # View/filter arguments
-    parser.add_argument("--project", "-p", help="Project name (partial match supported)")
+    parser.add_argument(
+        "--project", "-p", help="Project name (partial match supported)"
+    )
     parser.add_argument("--dialog", "-d", help="Dialog name (partial match supported)")
-    parser.add_argument("--list-projects", action="store_true", help="Show list of projects")
+    parser.add_argument(
+        "--list-projects", action="store_true", help="Show list of projects"
+    )
     parser.add_argument("--list-dialogs", help="Show list of dialogs for project")
     parser.add_argument("--list-all", action="store_true", help="List all dialogs")
-    parser.add_argument("--from", dest="start_date", type=parse_date, help="Filter after date")
-    parser.add_argument("--before", "--to", dest="end_date", type=parse_date, help="Filter before date")
-    parser.add_argument("--limit", type=parse_positive_int, default=50, help="Maximum dialogs (default: 50)")
-    parser.add_argument("--sort", choices=["date", "name", "project"], default="date", help="Sort by")
+    parser.add_argument(
+        "--from", dest="start_date", type=parse_date, help="Filter after date"
+    )
+    parser.add_argument(
+        "--before", "--to", dest="end_date", type=parse_date, help="Filter before date"
+    )
+    parser.add_argument(
+        "--limit",
+        type=parse_positive_int,
+        default=50,
+        help="Maximum dialogs (default: 50)",
+    )
+    parser.add_argument(
+        "--sort", choices=["date", "name", "project"], default="date", help="Sort by"
+    )
     parser.add_argument("--desc", action="store_true", help="Sort descending")
     parser.add_argument("--updated", action="store_true", help="Use last updated date")
-    parser.add_argument("--max-output-lines", type=parse_positive_int, default=1, help="Max lines for tool outputs")
+    parser.add_argument(
+        "--max-output-lines",
+        type=parse_positive_int,
+        default=1,
+        help="Max lines for tool outputs",
+    )
     parser.add_argument("--stats", action="store_true", help="Show usage statistics")
-    parser.add_argument("--days", type=parse_positive_int, default=30, help="Days for statistics (default: 30)")
-    parser.add_argument("--top", type=parse_positive_int, default=10, help="Top items in rankings (default: 10)")
+    parser.add_argument(
+        "--days",
+        type=parse_positive_int,
+        default=30,
+        help="Days for statistics (default: 30)",
+    )
+    parser.add_argument(
+        "--top",
+        type=parse_positive_int,
+        default=10,
+        help="Top items in rankings (default: 10)",
+    )
     # Export arguments
-    parser.add_argument("--export", action="store_true", help="Export dialogs to Markdown files")
-    parser.add_argument("--export-path", type=str, default=None, help="Override export directory")
-    parser.add_argument("--verbosity", type=int, choices=[1, 2, 3], default=None, help="Export verbosity: 1=compact, 2=standard, 3=full")
-    parser.add_argument("--show-config", action="store_true", help="Show current configuration")
+    parser.add_argument(
+        "--export", action="store_true", help="Export dialogs to Markdown files"
+    )
+    parser.add_argument(
+        "--export-path", type=str, default=None, help="Override export directory"
+    )
+    parser.add_argument(
+        "--verbosity",
+        type=int,
+        choices=[1, 2, 3],
+        default=None,
+        help="Export verbosity: 1=compact, 2=standard, 3=full",
+    )
+    parser.add_argument(
+        "--show-config", action="store_true", help="Show current configuration"
+    )
     # Backup arguments
-    parser.add_argument("--backup", action="store_true", help="Create compressed backup of Cursor databases")
-    parser.add_argument("--backup-path", type=str, default=None, help="Override backup directory")
-    parser.add_argument("--list-backups", action="store_true", help="List available backups")
-    parser.add_argument("--restore", type=str, default=None, metavar="BACKUP", help="Restore from backup ('latest' or filename/path)")
-    parser.add_argument("--no-pre-backup", action="store_true", help="Skip safety backup before restore")
+    parser.add_argument(
+        "--backup",
+        action="store_true",
+        help="Create compressed backup of Cursor databases",
+    )
+    parser.add_argument(
+        "--backup-path", type=str, default=None, help="Override backup directory"
+    )
+    parser.add_argument(
+        "--list-backups", action="store_true", help="List available backups"
+    )
+    parser.add_argument(
+        "--restore",
+        type=str,
+        default=None,
+        metavar="BACKUP",
+        help="Restore from backup ('latest' or filename/path)",
+    )
+    parser.add_argument(
+        "--no-pre-backup", action="store_true", help="Skip safety backup before restore"
+    )
 
     return parser
 
@@ -192,7 +254,7 @@ def _show_config():
     print("=" * 50)
     print(f"  Config path:  {get_config_path()}")
     print(f"  Export path:  {config.get('export_path', 'not set')}")
-    verbosity = config.get('verbosity', 2)
+    verbosity = config.get("verbosity", 2)
     verbosity_labels = {1: "compact", 2: "standard", 3: "full"}
     print(f"  Verbosity:    {verbosity} ({verbosity_labels.get(verbosity, 'unknown')})")
     print(f"  Backup path:  {config.get('backup_path', 'not set')}")
@@ -205,7 +267,9 @@ def _print_export_progress(info: Dict) -> None:
     current = info["current"]
     total = info["total"]
     project = info["project_name"]
-    status_icon = {"exported": "✅", "skipped": "⏭️", "error": "❌"}.get(info["status"], "•")
+    status_icon = {"exported": "✅", "skipped": "⏭️", "error": "❌"}.get(
+        info["status"], "•"
+    )
 
     # Truncate project name to keep line short
     if len(project) > 30:
@@ -244,7 +308,9 @@ def _run_backup(args):
     """Run the backup command."""
     backup_dir = _resolve_backup_dir(args)
     print("Creating backup of Cursor files...\n")
-    result = create_backup(backup_dir=backup_dir, progress_callback=_print_backup_progress)
+    result = create_backup(
+        backup_dir=backup_dir, progress_callback=_print_backup_progress
+    )
     print("\n" + format_backup_summary(result))
 
 
@@ -261,7 +327,9 @@ def _run_restore(args):
     if backup_identifier.lower() == "latest":
         backups = list_backups(backup_dir=backup_dir)
         if not backups:
-            print("❌ No backups found. Create one first with: cursor-chronicle --backup")
+            print(
+                "❌ No backups found. Create one first with: cursor-chronicle --backup"
+            )
             return
         backup_path = Path(backups[0]["path"])
         print(f"Using latest backup: {backups[0]['filename']}")

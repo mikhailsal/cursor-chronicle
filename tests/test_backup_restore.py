@@ -113,7 +113,10 @@ class TestListBackups(unittest.TestCase):
     def test_list_backups_cleans_partial_files(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             backup_dir = Path(tmpdir)
-            partial = backup_dir / f".{BACKUP_PREFIX}2026-03-17_10-00-00{BACKUP_SUFFIX}.partial"
+            partial = (
+                backup_dir
+                / f".{BACKUP_PREFIX}2026-03-17_10-00-00{BACKUP_SUFFIX}.partial"
+            )
             partial.write_text("partial")
 
             backups = list_backups(backup_dir=backup_dir)

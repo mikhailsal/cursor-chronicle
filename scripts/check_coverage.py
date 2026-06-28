@@ -4,9 +4,9 @@ Pre-commit hook to check test coverage.
 Fails if coverage drops below MIN_COVERAGE (default: 95%).
 """
 
+import re
 import subprocess
 import sys
-import re
 
 MIN_COVERAGE = 85
 

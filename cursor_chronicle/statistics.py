@@ -18,13 +18,13 @@ def get_dialog_statistics(
 ) -> Dict:
     """
     Collect comprehensive statistics for dialogs in the given period.
-    
+
     Args:
         viewer: CursorChatViewer instance
         start_date: Start of period (inclusive)
         end_date: End of period (inclusive)
         project_filter: Filter by project name (partial match)
-    
+
     Returns:
         Dict with all statistics data
     """
@@ -55,11 +55,18 @@ def get_dialog_statistics(
         "total_tokens_in": 0,
         "total_tokens_out": 0,
         "total_thinking_time_ms": 0,
-        "projects": defaultdict(lambda: {
-            "dialogs": 0, "messages": 0, "user_messages": 0,
-            "ai_messages": 0, "tool_calls": 0, "tokens_in": 0,
-            "tokens_out": 0, "dialog_names": [],
-        }),
+        "projects": defaultdict(
+            lambda: {
+                "dialogs": 0,
+                "messages": 0,
+                "user_messages": 0,
+                "ai_messages": 0,
+                "tool_calls": 0,
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "dialog_names": [],
+            }
+        ),
         "tool_usage": Counter(),
         "daily_activity": defaultdict(lambda: {"dialogs": 0, "messages": 0}),
         "dialogs_by_length": [],
@@ -125,7 +132,9 @@ def get_dialog_statistics(
             day_key = datetime.fromtimestamp(last_updated / 1000).strftime("%Y-%m-%d")
             stats["daily_activity"][day_key]["messages"] += dialog_message_count
 
-        stats["dialogs_by_length"].append((dialog_name, project_name, dialog_message_count))
+        stats["dialogs_by_length"].append(
+            (dialog_name, project_name, dialog_message_count)
+        )
 
     stats["dialogs_by_length"].sort(key=lambda x: x[2], reverse=True)
     stats["projects"] = dict(stats["projects"])
@@ -160,8 +169,8 @@ def format_statistics(stats: Dict, top_n: int = 10, max_days: int = 30) -> str:
     output.append(f"    🤖 AI responses:  {stats['ai_messages']}")
     output.append(f"    🛠️  Tool calls:    {stats['tool_calls']}")
 
-    if stats['total_dialogs'] > 0:
-        avg_messages = stats['total_messages'] / stats['total_dialogs']
+    if stats["total_dialogs"] > 0:
+        avg_messages = stats["total_messages"] / stats["total_dialogs"]
         output.append(f"  Avg messages/dialog: {avg_messages:.1f}")
 
     active_days = len(stats.get("daily_activity", {}))
@@ -169,7 +178,9 @@ def format_statistics(stats: Dict, top_n: int = 10, max_days: int = 30) -> str:
         total_period_days = (stats["period_end"] - stats["period_start"]).days
         if total_period_days > 0:
             coding_percent = (active_days / total_period_days) * 100
-            output.append(f"  📆 Coding days:      {active_days}/{total_period_days} ({coding_percent:.0f}%)")
+            output.append(
+                f"  📆 Coding days:      {active_days}/{total_period_days} ({coding_percent:.0f}%)"
+            )
     elif active_days > 0:
         output.append(f"  📆 Coding days:      {active_days}")
     output.append("")
@@ -196,12 +207,16 @@ def format_statistics(stats: Dict, top_n: int = 10, max_days: int = 30) -> str:
     if stats["projects"]:
         output.append("📁 PROJECT ACTIVITY (by messages)")
         output.append("-" * 40)
-        sorted_projects = sorted(stats["projects"].items(), key=lambda x: x[1]["messages"], reverse=True)
+        sorted_projects = sorted(
+            stats["projects"].items(), key=lambda x: x[1]["messages"], reverse=True
+        )
 
         for i, (project_name, proj_stats) in enumerate(sorted_projects[:top_n], 1):
             output.append(f"  {i}. {project_name}")
-            output.append(f"     💬 {proj_stats['dialogs']} dialogs | 📝 {proj_stats['messages']} messages | 🛠️ {proj_stats['tool_calls']} tools")
-            proj_tokens = proj_stats['tokens_in'] + proj_stats['tokens_out']
+            output.append(
+                f"     💬 {proj_stats['dialogs']} dialogs | 📝 {proj_stats['messages']} messages | 🛠️ {proj_stats['tool_calls']} tools"
+            )
+            proj_tokens = proj_stats["tokens_in"] + proj_stats["tokens_out"]
             if proj_tokens > 0:
                 output.append(f"     🔢 {proj_tokens:,} tokens")
 
@@ -220,7 +235,9 @@ def format_statistics(stats: Dict, top_n: int = 10, max_days: int = 30) -> str:
         output.append("📏 LONGEST DIALOGS")
         output.append("-" * 40)
         for dialog_name, project_name, msg_count in stats["dialogs_by_length"][:5]:
-            display_name = dialog_name[:40] + "..." if len(dialog_name) > 40 else dialog_name
+            display_name = (
+                dialog_name[:40] + "..." if len(dialog_name) > 40 else dialog_name
+            )
             output.append(f"  {display_name}")
             output.append(f"     📁 {project_name} | 📝 {msg_count} messages")
         output.append("")
@@ -229,12 +246,16 @@ def format_statistics(stats: Dict, top_n: int = 10, max_days: int = 30) -> str:
         output.append("📅 DAILY ACTIVITY")
         output.append("-" * 40)
         sorted_days = sorted(stats["daily_activity"].items(), reverse=True)
-        days_to_show = sorted_days[:max_days] if len(sorted_days) > max_days else sorted_days
+        days_to_show = (
+            sorted_days[:max_days] if len(sorted_days) > max_days else sorted_days
+        )
 
         for day, day_stats in days_to_show:
             bar_len = min(day_stats["messages"] // 2, 30)
             bar = "█" * bar_len
-            output.append(f"  {day}: {bar} {day_stats['dialogs']}d/{day_stats['messages']}m")
+            output.append(
+                f"  {day}: {bar} {day_stats['dialogs']}d/{day_stats['messages']}m"
+            )
 
         if len(sorted_days) > max_days:
             output.append(f"  ... {len(sorted_days) - max_days} more days")

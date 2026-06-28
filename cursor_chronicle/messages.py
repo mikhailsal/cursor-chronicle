@@ -5,10 +5,8 @@ Message extraction and processing from Cursor database.
 import base64
 import json
 import sqlite3
-from typing import Dict, List
-
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 from .utils import get_cursor_paths
 
@@ -28,50 +26,48 @@ def get_dialog_messages(composer_id: str, db_path: Optional[Path] = None) -> Lis
     if not global_storage_path.exists():
         raise FileNotFoundError(f"Global database not found: {global_storage_path}")
 
-    conn = sqlite3.connect(global_storage_path)
-    cursor = conn.cursor()
+    with sqlite3.connect(global_storage_path) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute(
-        """SELECT value FROM cursorDiskKV 
-        WHERE key = ? AND LENGTH(value) > 100""",
-        (f"composerData:{composer_id}",),
-    )
-
-    composer_result = cursor.fetchone()
-    ordered_bubble_ids = []
-
-    if composer_result:
-        try:
-            composer_data = json.loads(composer_result[0])
-            if "fullConversationHeadersOnly" in composer_data:
-                ordered_bubble_ids = [
-                    bubble["bubbleId"]
-                    for bubble in composer_data["fullConversationHeadersOnly"]
-                ]
-        except json.JSONDecodeError:
-            pass
-
-    if not ordered_bubble_ids:
         cursor.execute(
-            """SELECT rowid, key, value FROM cursorDiskKV 
-            WHERE key LIKE ? AND LENGTH(value) > 100 
-            ORDER BY rowid""",
-            (f"bubbleId:{composer_id}:%",),
+            """SELECT value FROM cursorDiskKV 
+            WHERE key = ? AND LENGTH(value) > 100""",
+            (f"composerData:{composer_id}",),
         )
-        results = cursor.fetchall()
-    else:
-        results = []
-        for bubble_id in ordered_bubble_ids:
+
+        composer_result = cursor.fetchone()
+        ordered_bubble_ids = []
+
+        if composer_result:
+            try:
+                composer_data = json.loads(composer_result[0])
+                if "fullConversationHeadersOnly" in composer_data:
+                    ordered_bubble_ids = [
+                        bubble["bubbleId"]
+                        for bubble in composer_data["fullConversationHeadersOnly"]
+                    ]
+            except json.JSONDecodeError:
+                pass
+
+        if not ordered_bubble_ids:
             cursor.execute(
                 """SELECT rowid, key, value FROM cursorDiskKV 
-                WHERE key = ? AND LENGTH(value) > 100""",
-                (f"bubbleId:{composer_id}:{bubble_id}",),
+                WHERE key LIKE ? AND LENGTH(value) > 100 
+                ORDER BY rowid""",
+                (f"bubbleId:{composer_id}:%",),
             )
-            result = cursor.fetchone()
-            if result:
-                results.append(result)
-
-    conn.close()
+            results = cursor.fetchall()
+        else:
+            results = []
+            for bubble_id in ordered_bubble_ids:
+                cursor.execute(
+                    """SELECT rowid, key, value FROM cursorDiskKV 
+                    WHERE key = ? AND LENGTH(value) > 100""",
+                    (f"bubbleId:{composer_id}:{bubble_id}",),
+                )
+                result = cursor.fetchone()
+                if result:
+                    results.append(result)
 
     messages = []
     for rowid, key, value in results:
@@ -112,7 +108,9 @@ def get_dialog_messages(composer_id: str, db_path: Optional[Path] = None) -> Lis
                 )
                 if is_thought_bubble:
                     message["is_thought"] = True
-                    message["thinking_duration"] = bubble_data.get("thinkingDurationMs", 0)
+                    message["thinking_duration"] = bubble_data.get(
+                        "thinkingDurationMs", 0
+                    )
                     thinking_content = _extract_thinking_content(thinking_data)
                     message["thinking_content"] = thinking_content
 
@@ -164,12 +162,14 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
             or current_file_data.get("file")
         )
         if file_path:
-            attached_files.append({
-                "type": "active",
-                "path": file_path,
-                "line": current_file_data.get("line"),
-                "preview": current_file_data.get("preview"),
-            })
+            attached_files.append(
+                {
+                    "type": "active",
+                    "path": file_path,
+                    "line": current_file_data.get("line"),
+                    "preview": current_file_data.get("preview"),
+                }
+            )
 
     # 2. Project layouts
     project_layouts = bubble_data.get("projectLayouts", [])
@@ -194,12 +194,14 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
         if isinstance(chunk, dict):
             file_path = chunk.get("relativeWorkspacePath")
             if file_path:
-                attached_files.append({
-                    "type": "context",
-                    "path": file_path,
-                    "content": chunk.get("contents", ""),
-                    "line_range": chunk.get("lineRange"),
-                })
+                attached_files.append(
+                    {
+                        "type": "context",
+                        "path": file_path,
+                        "content": chunk.get("contents", ""),
+                        "line_range": chunk.get("lineRange"),
+                    }
+                )
 
     # 4. Relevant files
     relevant_files = bubble_data.get("relevantFiles", [])
@@ -217,12 +219,14 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
         if isinstance(chunk, dict):
             file_path = chunk.get("path") or chunk.get("uri")
             if file_path:
-                attached_files.append({
-                    "type": "selected",
-                    "path": file_path,
-                    "content": chunk.get("content", ""),
-                    "selection": chunk.get("selection"),
-                })
+                attached_files.append(
+                    {
+                        "type": "selected",
+                        "path": file_path,
+                        "content": chunk.get("content", ""),
+                        "selection": chunk.get("selection"),
+                    }
+                )
 
     # 6. File selections from context
     context = bubble_data.get("context", {})
@@ -232,11 +236,13 @@ def extract_attached_files(bubble_data: Dict) -> List[Dict]:
             if isinstance(selection, dict):
                 file_path = selection.get("path") or selection.get("uri")
                 if file_path:
-                    attached_files.append({
-                        "type": "selected_context",
-                        "path": file_path,
-                        "selection": selection.get("selection"),
-                    })
+                    attached_files.append(
+                        {
+                            "type": "selected_context",
+                            "path": file_path,
+                            "selection": selection.get("selection"),
+                        }
+                    )
 
     return attached_files
 

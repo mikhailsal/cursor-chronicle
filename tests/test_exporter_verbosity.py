@@ -11,8 +11,16 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from cursor_chronicle.config import VERBOSITY_COMPACT, VERBOSITY_FULL, VERBOSITY_STANDARD
-from cursor_chronicle.exporter import export_dialogs, format_dialog_md, format_message_md
+from cursor_chronicle.config import (
+    VERBOSITY_COMPACT,
+    VERBOSITY_FULL,
+    VERBOSITY_STANDARD,
+)
+from cursor_chronicle.exporter import (
+    export_dialogs,
+    format_dialog_md,
+    format_message_md,
+)
 
 
 class TestVerbosityLevels(unittest.TestCase):
@@ -75,58 +83,78 @@ class TestVerbosityLevels(unittest.TestCase):
     def test_compact_is_shortest(self):
         """Test that compact produces less output than standard."""
         messages = self._make_messages()
-        compact = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT)
-        standard = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD)
+        compact = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT
+        )
+        standard = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD
+        )
         self.assertLess(len(compact), len(standard))
 
     def test_full_is_longest(self):
         """Test that full produces more output than standard."""
         messages = self._make_messages()
-        standard = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD)
+        standard = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD
+        )
         full = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_FULL)
         self.assertLessEqual(len(standard), len(full))
 
     def test_compact_no_thinking(self):
         """Test that compact doesn't include thinking content."""
         messages = self._make_messages()
-        result = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT)
+        result = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT
+        )
         self.assertNotIn("Thinking", result)
 
     def test_full_includes_tool_results(self):
         """Test that full includes tool results."""
         messages = self._make_messages()
-        result = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_FULL)
+        result = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_FULL
+        )
         self.assertIn("Result", result)
         self.assertIn("file content here", result)
 
     def test_standard_no_tool_results(self):
         """Test that standard verbosity does NOT include tool results."""
         messages = self._make_messages()
-        result = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD)
+        result = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD
+        )
         self.assertNotIn("file content here", result)
 
     def test_compact_no_parameters(self):
         """Test that compact verbosity does NOT include tool parameters."""
         messages = self._make_messages()
-        result = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT)
+        result = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT
+        )
         self.assertNotIn("Parameters", result)
 
     def test_standard_includes_parameters(self):
         """Test that standard verbosity includes tool parameters."""
         messages = self._make_messages()
-        result = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD)
+        result = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD
+        )
         self.assertIn("Parameters", result)
 
     def test_compact_no_token_info(self):
         """Test that compact verbosity does NOT include token info."""
         messages = self._make_messages()
-        result = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT)
+        result = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_COMPACT
+        )
         self.assertNotIn("Tokens", result)
 
     def test_standard_includes_token_info(self):
         """Test that standard verbosity includes token info."""
         messages = self._make_messages()
-        result = format_dialog_md(messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD)
+        result = format_dialog_md(
+            messages, "Test", "P", 1000000, 1000000, VERBOSITY_STANDARD
+        )
         self.assertIn("Tokens", result)
 
 
@@ -197,11 +225,13 @@ class TestFullVerbosityNoTruncation(unittest.TestCase):
         msg = {
             "type": 1,
             "text": "Check this",
-            "attached_files": [{
-                "type": "context",
-                "path": "/big_file.py",
-                "content": large_file_content,
-            }],
+            "attached_files": [
+                {
+                    "type": "context",
+                    "path": "/big_file.py",
+                    "content": large_file_content,
+                }
+            ],
             "is_thought": False,
         }
         result = format_message_md(msg, VERBOSITY_FULL)
@@ -253,12 +283,23 @@ class TestProgressCallback(unittest.TestCase):
         """Test that progress callback is called once per dialog."""
         mock_load_config.return_value = {"export_path": "/tmp", "verbosity": 2}
         mock_get_messages.return_value = [
-            {"type": 1, "text": "Hi", "attached_files": [], "is_thought": False, "tool_data": None},
+            {
+                "type": 1,
+                "text": "Hi",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
+            },
         ]
 
         dialogs = [
-            {"composer_id": f"id{i}", "name": f"D{i}", "project_name": "P",
-             "created_at": 1749736260000 + i * 1000, "last_updated": 1749736260000}
+            {
+                "composer_id": f"id{i}",
+                "name": f"D{i}",
+                "project_name": "P",
+                "created_at": 1749736260000 + i * 1000,
+                "last_updated": 1749736260000,
+            }
             for i in range(5)
         ]
 
@@ -266,33 +307,59 @@ class TestProgressCallback(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             viewer = self._make_viewer_mock(dialogs)
-            export_dialogs(viewer, export_path=Path(tmpdir), verbosity=2, progress_callback=callback)
+            export_dialogs(
+                viewer,
+                export_path=Path(tmpdir),
+                verbosity=2,
+                progress_callback=callback,
+            )
 
         self.assertEqual(callback.call_count, 5)
 
     @patch("cursor_chronicle.exporter.load_config")
     @patch("cursor_chronicle.exporter.get_dialog_messages")
-    def test_callback_receives_correct_percent(self, mock_get_messages, mock_load_config):
+    def test_callback_receives_correct_percent(
+        self, mock_get_messages, mock_load_config
+    ):
         """Test that progress callback receives correct percentage."""
         mock_load_config.return_value = {"export_path": "/tmp", "verbosity": 2}
         mock_get_messages.return_value = [
-            {"type": 1, "text": "Hi", "attached_files": [], "is_thought": False, "tool_data": None},
+            {
+                "type": 1,
+                "text": "Hi",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
+            },
         ]
 
         dialogs = [
-            {"composer_id": "id1", "name": "D1", "project_name": "P",
-             "created_at": 1749736260000, "last_updated": 1749736260000},
-            {"composer_id": "id2", "name": "D2", "project_name": "P",
-             "created_at": 1749736261000, "last_updated": 1749736261000},
+            {
+                "composer_id": "id1",
+                "name": "D1",
+                "project_name": "P",
+                "created_at": 1749736260000,
+                "last_updated": 1749736260000,
+            },
+            {
+                "composer_id": "id2",
+                "name": "D2",
+                "project_name": "P",
+                "created_at": 1749736261000,
+                "last_updated": 1749736261000,
+            },
         ]
 
         received = []
+
         def capture(info):
             received.append(info.copy())
 
         with tempfile.TemporaryDirectory() as tmpdir:
             viewer = self._make_viewer_mock(dialogs)
-            export_dialogs(viewer, export_path=Path(tmpdir), verbosity=2, progress_callback=capture)
+            export_dialogs(
+                viewer, export_path=Path(tmpdir), verbosity=2, progress_callback=capture
+            )
 
         self.assertEqual(received[0]["percent"], 50)
         self.assertEqual(received[0]["current"], 1)
@@ -307,17 +374,25 @@ class TestProgressCallback(unittest.TestCase):
         mock_get_messages.return_value = []  # empty = skipped
 
         dialogs = [
-            {"composer_id": "id1", "name": "Empty", "project_name": "P",
-             "created_at": 1749736260000, "last_updated": 1749736260000},
+            {
+                "composer_id": "id1",
+                "name": "Empty",
+                "project_name": "P",
+                "created_at": 1749736260000,
+                "last_updated": 1749736260000,
+            },
         ]
 
         received = []
+
         def capture(info):
             received.append(info.copy())
 
         with tempfile.TemporaryDirectory() as tmpdir:
             viewer = self._make_viewer_mock(dialogs)
-            export_dialogs(viewer, export_path=Path(tmpdir), verbosity=2, progress_callback=capture)
+            export_dialogs(
+                viewer, export_path=Path(tmpdir), verbosity=2, progress_callback=capture
+            )
 
         self.assertEqual(received[0]["status"], "skipped")
 
@@ -329,17 +404,25 @@ class TestProgressCallback(unittest.TestCase):
         mock_get_messages.side_effect = Exception("DB error")
 
         dialogs = [
-            {"composer_id": "id1", "name": "Bad", "project_name": "P",
-             "created_at": 1749736260000, "last_updated": 1749736260000},
+            {
+                "composer_id": "id1",
+                "name": "Bad",
+                "project_name": "P",
+                "created_at": 1749736260000,
+                "last_updated": 1749736260000,
+            },
         ]
 
         received = []
+
         def capture(info):
             received.append(info.copy())
 
         with tempfile.TemporaryDirectory() as tmpdir:
             viewer = self._make_viewer_mock(dialogs)
-            export_dialogs(viewer, export_path=Path(tmpdir), verbosity=2, progress_callback=capture)
+            export_dialogs(
+                viewer, export_path=Path(tmpdir), verbosity=2, progress_callback=capture
+            )
 
         self.assertEqual(received[0]["status"], "error")
 
@@ -349,12 +432,23 @@ class TestProgressCallback(unittest.TestCase):
         """Test that export works fine without a progress callback."""
         mock_load_config.return_value = {"export_path": "/tmp", "verbosity": 2}
         mock_get_messages.return_value = [
-            {"type": 1, "text": "Hi", "attached_files": [], "is_thought": False, "tool_data": None},
+            {
+                "type": 1,
+                "text": "Hi",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
+            },
         ]
 
         dialogs = [
-            {"composer_id": "id1", "name": "D1", "project_name": "P",
-             "created_at": 1749736260000, "last_updated": 1749736260000},
+            {
+                "composer_id": "id1",
+                "name": "D1",
+                "project_name": "P",
+                "created_at": 1749736260000,
+                "last_updated": 1749736260000,
+            },
         ]
 
         with tempfile.TemporaryDirectory() as tmpdir:

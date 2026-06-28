@@ -25,43 +25,51 @@ def format_attached_files(attached_files: List[Dict], max_output_lines: int) -> 
     result = []
 
     for file_info in active_files:
-        file_path = file_info.get('path', 'unknown')
+        file_path = file_info.get("path", "unknown")
         result.append(f"   📍 Active file: {file_path}")
         if file_info.get("line"):
             result.append(f"      Line: {file_info['line']}")
         if file_info.get("preview"):
-            preview = file_info["preview"][:100] + "..." if len(file_info["preview"]) > 100 else file_info["preview"]
+            preview = (
+                file_info["preview"][:100] + "..."
+                if len(file_info["preview"]) > 100
+                else file_info["preview"]
+            )
             result.append(f"      Preview: {preview}")
 
     for file_info in selected_files:
-        file_path = file_info.get('path', 'unknown')
+        file_path = file_info.get("path", "unknown")
         result.append(f"   ✅ Selected file: {file_path}")
         if file_info.get("selection"):
             result.append(f"      Selection: {file_info['selection']}")
 
     for file_info in context_files:
-        file_path = file_info.get('path', 'unknown')
+        file_path = file_info.get("path", "unknown")
         result.append(f"   📎 Context file: {file_path}")
         if file_info.get("line_range"):
             result.append(f"      Lines: {file_info['line_range']}")
         if file_info.get("content") and max_output_lines > 1:
-            content = file_info["content"][:200] + "..." if len(file_info["content"]) > 200 else file_info["content"]
+            content = (
+                file_info["content"][:200] + "..."
+                if len(file_info["content"]) > 200
+                else file_info["content"]
+            )
             result.append(f"      Content: {content}")
 
     for file_info in relevant_files:
-        file_path = file_info.get('path', 'unknown')
+        file_path = file_info.get("path", "unknown")
         result.append(f"   🔗 Relevant file: {file_path}")
 
     if project_files:
         result.append(f"   📁 Project files ({len(project_files)} files):")
         for file_info in project_files[:10]:
-            file_path = file_info.get('path', 'unknown')
+            file_path = file_info.get("path", "unknown")
             result.append(f"      - {file_path}")
         if len(project_files) > 10:
             result.append(f"      ... and {len(project_files) - 10} more files")
 
     for file_info in selected_context_files:
-        file_path = file_info.get('path', 'unknown')
+        file_path = file_info.get("path", "unknown")
         result.append(f"   🎯 Selected in context: {file_path}")
         if file_info.get("selection"):
             result.append(f"      Selection: {file_info['selection']}")
@@ -108,10 +116,16 @@ def format_tool_call(tool_data: Dict, max_output_lines: int = 1) -> str:
                 for key, value in args.items():
                     if isinstance(value, str) and key == "explanation":
                         pass
-                    elif tool_name in ["edit_file", "search_replace"] and key == "code_edit":
+                    elif (
+                        tool_name in ["edit_file", "search_replace"]
+                        and key == "code_edit"
+                    ):
                         value_lines = value.splitlines()
                         if len(value_lines) > max_output_lines:
-                            value = "\n".join(value_lines[:max_output_lines]) + f"... ({len(value_lines) - max_output_lines} more lines)"
+                            value = (
+                                "\n".join(value_lines[:max_output_lines])
+                                + f"... ({len(value_lines) - max_output_lines} more lines)"
+                            )
                         output.append(f"     {key}: {value}")
                         continue
                     elif isinstance(value, str) and len(value) > 70:
@@ -131,14 +145,18 @@ def format_tool_call(tool_data: Dict, max_output_lines: int = 1) -> str:
                 result_data = None
             if result_data is not None:
                 output.append("   Result:")
-                output.extend(_format_tool_result(tool_name, result_data, max_output_lines))
+                output.extend(
+                    _format_tool_result(tool_name, result_data, max_output_lines)
+                )
         except (json.JSONDecodeError, TypeError):
             pass
 
     return "\n".join(output)
 
 
-def _format_tool_result(tool_name: str, result_data, max_output_lines: int) -> List[str]:
+def _format_tool_result(
+    tool_name: str, result_data, max_output_lines: int
+) -> List[str]:
     """Format tool result based on tool type."""
     output = []
 
@@ -147,7 +165,10 @@ def _format_tool_result(tool_name: str, result_data, max_output_lines: int) -> L
             if key == "contents":
                 value_lines = str(value).splitlines()
                 if len(value_lines) > max_output_lines:
-                    value_str = "\n".join(value_lines[:max_output_lines]) + f"... ({len(value_lines) - max_output_lines} more lines)"
+                    value_str = (
+                        "\n".join(value_lines[:max_output_lines])
+                        + f"... ({len(value_lines) - max_output_lines} more lines)"
+                    )
                 else:
                     value_str = str(value)
                 output.append(f"     {key}: {value_str}")
@@ -161,7 +182,10 @@ def _format_tool_result(tool_name: str, result_data, max_output_lines: int) -> L
         if cmd_output:
             lines = cmd_output.splitlines()
             if len(lines) > max_output_lines:
-                cmd_output = "\n".join(lines[:max_output_lines]) + f"... ({len(lines) - max_output_lines} more lines)"
+                cmd_output = (
+                    "\n".join(lines[:max_output_lines])
+                    + f"... ({len(lines) - max_output_lines} more lines)"
+                )
             output.append(f"     Output: {cmd_output}")
 
     elif tool_name in ["edit_file", "search_replace"]:
@@ -169,11 +193,17 @@ def _format_tool_result(tool_name: str, result_data, max_output_lines: int) -> L
             diff_data = result_data["diff"]
             if "chunks" in diff_data:
                 output.append("     Changes:")
-                total_added = sum(chunk.get("linesAdded", 0) for chunk in diff_data["chunks"])
-                total_removed = sum(chunk.get("linesRemoved", 0) for chunk in diff_data["chunks"])
+                total_added = sum(
+                    chunk.get("linesAdded", 0) for chunk in diff_data["chunks"]
+                )
+                total_removed = sum(
+                    chunk.get("linesRemoved", 0) for chunk in diff_data["chunks"]
+                )
 
                 if max_output_lines == 1:
-                    output.append(f"       +{total_added} -{total_removed} lines (details hidden)")
+                    output.append(
+                        f"       +{total_added} -{total_removed} lines (details hidden)"
+                    )
                 else:
                     lines_shown = 0
                     for chunk in diff_data["chunks"]:
@@ -181,31 +211,44 @@ def _format_tool_result(tool_name: str, result_data, max_output_lines: int) -> L
                             break
                         diff_string = chunk.get("diffString", "")
                         chunk_lines = diff_string.splitlines()
-                        lines_to_show = min(len(chunk_lines), max_output_lines - lines_shown)
+                        lines_to_show = min(
+                            len(chunk_lines), max_output_lines - lines_shown
+                        )
 
                         for line in chunk_lines[:lines_to_show]:
                             output.append(f"       {line}")
                         lines_shown += lines_to_show
 
                         if len(chunk_lines) > lines_to_show:
-                            output.append(f"       ... ({len(chunk_lines) - lines_to_show} more lines in chunk)")
+                            output.append(
+                                f"       ... ({len(chunk_lines) - lines_to_show} more lines in chunk)"
+                            )
 
                     if total_added + total_removed > lines_shown:
-                        output.append(f"       ... (Total changes: +{total_added} -{total_removed} lines)")
+                        output.append(
+                            f"       ... (Total changes: +{total_added} -{total_removed} lines)"
+                        )
     else:
         if isinstance(result_data, dict):
             items = list(result_data.items())
             if len(items) > max_output_lines:
-                output.append(f"     (Showing {max_output_lines} of {len(items)} fields)")
+                output.append(
+                    f"     (Showing {max_output_lines} of {len(items)} fields)"
+                )
                 items = items[:max_output_lines]
             for key, value in items:
-                value_str = str(value)[:70] + "..." if len(str(value)) > 70 else str(value)
+                value_str = (
+                    str(value)[:70] + "..." if len(str(value)) > 70 else str(value)
+                )
                 output.append(f"     {key}: {value_str}")
         else:
             result_str = str(result_data)
             lines = result_str.splitlines()
             if len(lines) > max_output_lines:
-                result_str = "\n".join(lines[:max_output_lines]) + f"... ({len(lines) - max_output_lines} more lines)"
+                result_str = (
+                    "\n".join(lines[:max_output_lines])
+                    + f"... ({len(lines) - max_output_lines} more lines)"
+                )
             output.append(f"     {result_str}")
 
     return output
@@ -221,7 +264,17 @@ def format_token_info(message: Dict) -> str:
     use_web = message.get("use_web", False)
     is_refunded = message.get("is_refunded", False)
 
-    if not any([token_count, usage_uuid, is_agentic, capabilities_ran, unified_mode, use_web, is_refunded]):
+    if not any(
+        [
+            token_count,
+            usage_uuid,
+            is_agentic,
+            capabilities_ran,
+            unified_mode,
+            use_web,
+            is_refunded,
+        ]
+    ):
         return ""
 
     output = []
@@ -233,7 +286,9 @@ def format_token_info(message: Dict) -> str:
 
         if total_tokens > 0:
             inferred_model = infer_model_from_context(message, total_tokens)
-            output.append(f"🔢 Tokens: {input_tokens}→{output_tokens} ({total_tokens} total)")
+            output.append(
+                f"🔢 Tokens: {input_tokens}→{output_tokens} ({total_tokens} total)"
+            )
             if inferred_model:
                 output.append(f"🤖 Inferred model: {inferred_model}")
 
@@ -319,7 +374,11 @@ def format_dialog(
             if thinking_duration > 0:
                 output.append(f"   Duration: {thinking_duration/1000:.1f}s")
             if thinking_content:
-                content = thinking_content[:500] + "..." if len(thinking_content) > 500 else thinking_content
+                content = (
+                    thinking_content[:500] + "..."
+                    if len(thinking_content) > 500
+                    else thinking_content
+                )
                 output.append(f"   Content: {content}")
             output.append("-" * 40)
             continue

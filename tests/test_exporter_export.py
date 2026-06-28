@@ -33,12 +33,18 @@ class TestExportDialogs(unittest.TestCase):
 
         mock_get_messages.return_value = [
             {
-                "type": 1, "text": "Hello", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 1,
+                "text": "Hello",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
             },
             {
-                "type": 2, "text": "Hi!", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 2,
+                "text": "Hi!",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
                 "token_count": {},
             },
         ]
@@ -145,8 +151,11 @@ class TestExportDialogs(unittest.TestCase):
         mock_load_config.return_value = {"export_path": "/tmp", "verbosity": 2}
         mock_get_messages.return_value = [
             {
-                "type": 1, "text": "Test", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 1,
+                "text": "Test",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
             },
         ]
 
@@ -183,8 +192,11 @@ class TestExportDialogs(unittest.TestCase):
         mock_load_config.return_value = {"export_path": "/tmp", "verbosity": 2}
         mock_get_messages.return_value = [
             {
-                "type": 1, "text": "Updated content", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 1,
+                "text": "Updated content",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
             },
         ]
 

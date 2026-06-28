@@ -9,8 +9,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from cursor_chronicle.config import VERBOSITY_COMPACT, VERBOSITY_FULL, VERBOSITY_STANDARD
-from cursor_chronicle.exporter import format_dialog_md, format_message_md, show_export_summary
+from cursor_chronicle.config import (
+    VERBOSITY_COMPACT,
+    VERBOSITY_FULL,
+    VERBOSITY_STANDARD,
+)
+from cursor_chronicle.exporter import (
+    format_dialog_md,
+    format_message_md,
+    show_export_summary,
+)
 
 
 class TestFormatMessageMd(unittest.TestCase):
@@ -244,18 +252,27 @@ class TestFormatDialogMd(unittest.TestCase):
         """Test formatting a basic dialog."""
         messages = [
             {
-                "type": 1, "text": "Hello", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 1,
+                "text": "Hello",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
             },
             {
-                "type": 2, "text": "Hi there!", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 2,
+                "text": "Hi there!",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
                 "token_count": {},
             },
         ]
         result = format_dialog_md(
-            messages, "Test Dialog", "TestProject",
-            created_at=1749736260000, last_updated=1749736300000,
+            messages,
+            "Test Dialog",
+            "TestProject",
+            created_at=1749736260000,
+            last_updated=1749736300000,
             verbosity=VERBOSITY_STANDARD,
         )
         self.assertIn("# Test Dialog", result)
@@ -270,13 +287,19 @@ class TestFormatDialogMd(unittest.TestCase):
         """Test dialog with zero timestamps."""
         messages = [
             {
-                "type": 1, "text": "Test", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 1,
+                "text": "Test",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
             },
         ]
         result = format_dialog_md(
-            messages, "Test", "Project",
-            created_at=0, last_updated=0,
+            messages,
+            "Test",
+            "Project",
+            created_at=0,
+            last_updated=0,
             verbosity=VERBOSITY_STANDARD,
         )
         self.assertIn("# Test", result)
@@ -286,18 +309,27 @@ class TestFormatDialogMd(unittest.TestCase):
         """Test that messages are separated by horizontal rules."""
         messages = [
             {
-                "type": 1, "text": "Hello", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 1,
+                "text": "Hello",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
             },
             {
-                "type": 2, "text": "World", "attached_files": [],
-                "is_thought": False, "tool_data": None,
+                "type": 2,
+                "text": "World",
+                "attached_files": [],
+                "is_thought": False,
+                "tool_data": None,
                 "token_count": {},
             },
         ]
         result = format_dialog_md(
-            messages, "Test", "Project",
-            created_at=1749736260000, last_updated=1749736260000,
+            messages,
+            "Test",
+            "Project",
+            created_at=1749736260000,
+            last_updated=1749736260000,
             verbosity=VERBOSITY_COMPACT,
         )
         self.assertGreater(result.count("---"), 1)

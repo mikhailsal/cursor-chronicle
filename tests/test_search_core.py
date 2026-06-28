@@ -95,7 +95,11 @@ class TestSearchInBubble(unittest.TestCase):
     def test_search_in_bubble_thinking_dict(self):
         """Test search in thinking data as dict."""
         searcher = search_history.CursorHistorySearch()
-        bubble = {"text": "", "type": 2, "thinking": {"content": "Thinking about KiloCode implementation"}}
+        bubble = {
+            "text": "",
+            "type": 2,
+            "thinking": {"content": "Thinking about KiloCode implementation"},
+        }
         matches = searcher.search_in_bubble(bubble, "KiloCode")
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["field"], "thinking")
@@ -136,16 +140,22 @@ class TestSearchComposer(unittest.TestCase):
         """Test search_composer with mock database."""
         searcher = search_history.CursorHistorySearch()
 
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
 
-        bubble_data = {"bubbleId": "bubble1", "text": "KiloCode implementation details " + "x" * 100, "type": 1}
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:composer1:bubble1", json.dumps(bubble_data)))
+        bubble_data = {
+            "bubbleId": "bubble1",
+            "text": "KiloCode implementation details " + "x" * 100,
+            "type": 1,
+        }
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("bubbleId:composer1:bubble1", json.dumps(bubble_data)),
+        )
 
         conn.commit()
         conn.close()
@@ -164,14 +174,16 @@ class TestSearchComposer(unittest.TestCase):
         """Test JSON decode error handling."""
         searcher = search_history.CursorHistorySearch()
 
-        with tempfile.NamedTemporaryFile(suffix='.vscdb', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".vscdb", delete=False) as f:
             db_path = f.name
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('CREATE TABLE cursorDiskKV (key TEXT, value TEXT)')
-        cursor.execute("INSERT INTO cursorDiskKV VALUES (?, ?)",
-                       ("bubbleId:composer1:bubble1", "invalid json " + "x" * 100))
+        cursor.execute("CREATE TABLE cursorDiskKV (key TEXT, value TEXT)")
+        cursor.execute(
+            "INSERT INTO cursorDiskKV VALUES (?, ?)",
+            ("bubbleId:composer1:bubble1", "invalid json " + "x" * 100),
+        )
         conn.commit()
         conn.close()
 
@@ -191,6 +203,7 @@ class TestGetAllComposers(unittest.TestCase):
         """Test when workspace storage doesn't exist."""
         searcher = search_history.CursorHistorySearch()
         searcher.workspace_storage_path = Path("/nonexistent/path")
+        searcher.global_storage_path = Path("/nonexistent/global.vscdb")
         result = searcher.get_all_composers()
         self.assertEqual(result, [])
 
@@ -208,13 +221,21 @@ class TestGetAllComposers(unittest.TestCase):
             state_db = workspace_dir / "state.vscdb"
             conn = sqlite3.connect(state_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE ItemTable (key TEXT, value TEXT)')
-            cursor.execute("INSERT INTO ItemTable VALUES (?, ?)",
-                           ("composer.composerData", json.dumps({"allComposers": [{"composerId": "comp1", "name": "Test"}]})))
+            cursor.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cursor.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {"allComposers": [{"composerId": "comp1", "name": "Test"}]}
+                    ),
+                ),
+            )
             conn.commit()
             conn.close()
 
             searcher.workspace_storage_path = Path(tmpdir)
+            searcher.global_storage_path = Path(tmpdir) / "nonexistent.vscdb"
             composers = searcher.get_all_composers()
             self.assertEqual(len(composers), 1)
             self.assertEqual(composers[0]["_project_name"], "remote://server/project")
@@ -227,6 +248,7 @@ class TestGetAllComposers(unittest.TestCase):
             file_path = Path(tmpdir) / "not_a_dir.txt"
             file_path.write_text("test")
             searcher.workspace_storage_path = Path(tmpdir)
+            searcher.global_storage_path = Path(tmpdir) / "nonexistent.vscdb"
             composers = searcher.get_all_composers()
             self.assertEqual(composers, [])
 
@@ -238,6 +260,7 @@ class TestGetAllComposers(unittest.TestCase):
             workspace_dir = Path(tmpdir) / "workspace1"
             workspace_dir.mkdir()
             searcher.workspace_storage_path = Path(tmpdir)
+            searcher.global_storage_path = Path(tmpdir) / "nonexistent.vscdb"
             composers = searcher.get_all_composers()
             self.assertEqual(composers, [])
 
@@ -255,11 +278,12 @@ class TestGetAllComposers(unittest.TestCase):
             state_db = workspace_dir / "state.vscdb"
             conn = sqlite3.connect(state_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE ItemTable (key TEXT, value TEXT)')
+            cursor.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
             conn.commit()
             conn.close()
 
             searcher.workspace_storage_path = Path(tmpdir)
+            searcher.global_storage_path = Path(tmpdir) / "nonexistent.vscdb"
             composers = searcher.get_all_composers()
             self.assertEqual(composers, [])
 
@@ -278,6 +302,167 @@ class TestSearchHistoryIntegration(unittest.TestCase):
             self.skipTest("No Cursor data available")
         composers = self.searcher.get_all_composers()
         self.assertIsInstance(composers, list)
+
+
+class TestGetAllComposersGlobalHeaders(unittest.TestCase):
+    """Test get_all_composers() with the Cursor 3.0+ global composerHeaders key."""
+
+    def _make_global_db(self, tmpdir: Path, composers: list) -> Path:
+        db_path = tmpdir / "state.vscdb"
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
+        cur.execute(
+            "INSERT INTO ItemTable VALUES (?, ?)",
+            ("composer.composerHeaders", json.dumps({"allComposers": composers})),
+        )
+        conn.commit()
+        conn.close()
+        return db_path
+
+    def test_global_headers_loaded(self):
+        """Composers from global composerHeaders are returned with project metadata."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "g1",
+                    "name": "Global Chat",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws-abc",
+                        "uri": {"fsPath": "/home/user/repo", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            searcher = search_history.CursorHistorySearch()
+            searcher.global_storage_path = db_path
+            searcher.workspace_storage_path = tmp_path / "nonexistent"
+
+            result = searcher.get_all_composers()
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["composerId"], "g1")
+            self.assertEqual(result[0]["_project_name"], "repo")
+            self.assertEqual(result[0]["_folder_path"], "/home/user/repo")
+            self.assertEqual(result[0]["_workspace_id"], "ws-abc")
+
+    def test_global_headers_deduplicates_with_legacy(self):
+        """Composers in global headers are not duplicated from legacy workspace data."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "dup-id",
+                    "name": "Dup Chat",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/proj", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            # Create legacy workspace with same composerId
+            ws_dir = tmp_path / "ws_legacy"
+            ws_dir.mkdir()
+            (ws_dir / "workspace.json").write_text(
+                json.dumps({"folder": "file:///home/user/proj"})
+            )
+            legacy_db = ws_dir / "state.vscdb"
+            conn = sqlite3.connect(legacy_db)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cur.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "dup-id",
+                                    "name": "Dup Chat",
+                                    "lastUpdatedAt": 1710000000000,
+                                    "createdAt": 1709900000000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            conn.close()
+
+            searcher = search_history.CursorHistorySearch()
+            searcher.global_storage_path = db_path
+            searcher.workspace_storage_path = tmp_path
+
+            result = searcher.get_all_composers()
+            ids = [c["composerId"] for c in result]
+            self.assertEqual(ids.count("dup-id"), 1)
+
+    def test_global_headers_merges_unique_legacy(self):
+        """Legacy-only composers (not in global headers) are still included."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            composers = [
+                {
+                    "composerId": "global-only",
+                    "name": "Global",
+                    "lastUpdatedAt": 1710000000000,
+                    "createdAt": 1709900000000,
+                    "workspaceIdentifier": {
+                        "id": "ws1",
+                        "uri": {"fsPath": "/home/user/proj", "scheme": "file"},
+                    },
+                },
+            ]
+            db_path = self._make_global_db(tmp_path, composers)
+
+            ws_dir = tmp_path / "ws_old"
+            ws_dir.mkdir()
+            (ws_dir / "workspace.json").write_text(
+                json.dumps({"folder": "file:///home/user/proj"})
+            )
+            legacy_db = ws_dir / "state.vscdb"
+            conn = sqlite3.connect(legacy_db)
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE ItemTable (key TEXT, value TEXT)")
+            cur.execute(
+                "INSERT INTO ItemTable VALUES (?, ?)",
+                (
+                    "composer.composerData",
+                    json.dumps(
+                        {
+                            "allComposers": [
+                                {
+                                    "composerId": "legacy-only",
+                                    "name": "Legacy",
+                                    "lastUpdatedAt": 1700000000000,
+                                    "createdAt": 1699900000000,
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            conn.close()
+
+            searcher = search_history.CursorHistorySearch()
+            searcher.global_storage_path = db_path
+            searcher.workspace_storage_path = tmp_path
+
+            result = searcher.get_all_composers()
+            ids = {c["composerId"] for c in result}
+            self.assertIn("global-only", ids)
+            self.assertIn("legacy-only", ids)
+            self.assertEqual(len(result), 2)
 
 
 if __name__ == "__main__":
